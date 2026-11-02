@@ -9,10 +9,7 @@ const DRAFT_KEY = "story-time-draft";
 const createBtn = document.getElementById("create-btn");
 const cancelBtn = document.getElementById("cancel-btn");
 const note = document.getElementById("note");
-const codeRow = document.getElementById("code-row");
-const codeInput = document.getElementById("family-code");
 
-const CODE_KEY = "story-time-family-code";
 const SAMPLE_NOTE = "בינתיים נפתח סיפור לדוגמה. יצירת סיפורים תחובר בקרוב.";
 const STEPS = [
   { action: "write", status: "הירח כותב סיפור…" },
@@ -20,7 +17,6 @@ const STEPS = [
   { action: "vocalize", status: "הירח מוסיף ניקוד…" },
 ];
 const ERROR_TEXT = {
-  bad_code: "הקוד המשפחתי לא נכון.",
   bad_topic: "כתבו רעיון קצר לסיפור.",
   refused: "לא הצלחתי לכתוב על זה. נסו רעיון אחר.",
   busy: "יש עומס כרגע. נסו שוב עוד רגע.",
@@ -47,25 +43,8 @@ topicInput.addEventListener("input", () => {
   } catch {}
 });
 
-function readCode() {
-  try {
-    return localStorage.getItem(CODE_KEY) || "";
-  } catch {
-    return "";
-  }
-}
-
-function saveCode(code) {
-  try {
-    if (code) localStorage.setItem(CODE_KEY, code);
-    else localStorage.removeItem(CODE_KEY);
-  } catch {}
-}
-
 function resetForm() {
-  const live = Boolean(window.STORY_API_URL);
-  note.textContent = live ? "" : SAMPLE_NOTE;
-  codeRow.hidden = !live || Boolean(readCode());
+  note.textContent = window.STORY_API_URL ? "" : SAMPLE_NOTE;
 }
 
 function toBookPages(story) {
@@ -77,13 +56,12 @@ function toBookPages(story) {
   return [{ kind: "title", lines: [story.title] }, ...body, { kind: "title", lines: ["הַסּוֹף"] }];
 }
 
-async function callStep(payload, code, signal) {
+async function callStep(payload, signal) {
   const response = await fetch(window.STORY_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       apikey: window.STORY_API_KEY,
-      "x-family-code": code,
     },
     body: JSON.stringify(payload),
     signal,
@@ -102,16 +80,6 @@ function setWaiting(on) {
 
 /* אם שלב נכשל, לחיצה נוספת על אותו רעיון ממשיכה ממנו ולא משלמת שוב על הקודמים */
 async function createStory(topic) {
-  const code = readCode() || codeInput.value.trim();
-  if (!code) {
-    codeRow.hidden = false;
-    note.textContent = "צריך את הקוד המשפחתי.";
-    codeInput.focus();
-    return;
-  }
-  saveCode(code);
-  codeRow.hidden = true;
-
   if (!job || job.topic !== topic) job = { topic, step: 0, story: null };
   const controller = new AbortController();
   job.controller = controller;
@@ -121,7 +89,7 @@ async function createStory(topic) {
       const { action, status } = STEPS[job.step];
       note.textContent = status;
       const payload = action === "write" ? { action, topic } : { action, story: job.story };
-      job.story = await callStep(payload, code, controller.signal);
+      job.story = await callStep(payload, controller.signal);
     }
     pages = toBookPages(job.story);
     job = null;
@@ -135,11 +103,6 @@ async function createStory(topic) {
       return;
     }
     console.error(error);
-    if (error.message === "bad_code") {
-      saveCode("");
-      codeInput.value = "";
-      codeRow.hidden = false;
-    }
     if (error.message === "refused" || error.message === "bad_topic") job = null;
     note.textContent = ERROR_TEXT[error.message] || GENERIC_ERROR;
   }
