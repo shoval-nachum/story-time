@@ -1,4 +1,4 @@
-const CACHE = "story-time-v8";
+const CACHE = "story-time-v9";
 const SHELL = [
   "./",
   "index.html",
@@ -14,7 +14,9 @@ const SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+  event.waitUntil(caches.open(CACHE).then((cache) =>
+      cache.addAll(SHELL.map((path) => new Request(path, { cache: "reload" }))),
+    ));
   self.skipWaiting();
 });
 
@@ -33,8 +35,10 @@ self.addEventListener("fetch", (event) => {
   const sameOrigin = url.origin === self.location.origin;
   const isFont = url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com";
   if (!sameOrigin && !isFont) return;
+  // כל קובץ נבדק מול השרת, כדי שקבצים ישנים מהמטמון של הדפדפן לא יתערבבו עם חדשים
+  const fresh = sameOrigin ? fetch(event.request.url, { cache: "no-cache" }) : fetch(event.request);
   event.respondWith(
-    fetch(event.request)
+    fresh
       .then((response) => {
         const copy = response.clone();
         caches.open(CACHE).then((cache) => cache.put(event.request, copy));
