@@ -27,29 +27,16 @@ topicInput.addEventListener("input", () => {
 
 document.getElementById("topic-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  history.pushState({ reading: true }, "", "#book");
   openBook();
 });
 
-document.getElementById("home-btn").addEventListener("click", () => {
-  if (history.state && history.state.reading) {
-    history.back();
-  } else {
-    history.replaceState(null, "", location.pathname);
-    closeBook();
-  }
-});
-window.addEventListener("popstate", syncRoute);
-
-function syncRoute() {
-  if (location.hash === "#book") openBook();
-  else closeBook();
-}
+document.getElementById("home-btn").addEventListener("click", closeBook);
 
 function openBook() {
   home.hidden = true;
   reader.hidden = false;
   document.getElementById("theme-color").content = "#ffffff";
+  document.documentElement.classList.add("reading");
   view.index = 0;
   layout();
 }
@@ -58,6 +45,7 @@ function closeBook() {
   reader.hidden = true;
   home.hidden = false;
   document.getElementById("theme-color").content = "#2bb3ff";
+  document.documentElement.classList.remove("reading");
   cancelTurn();
 }
 
@@ -469,6 +457,9 @@ function autoTurn(dir, cornerY) {
 
 /* מחוות: גרירה ימינה קדימה וגרירה שמאלה אחורה, כמו בספר בעברית */
 
+/* ב-Safari גרירה מהקצה היא מחוות חזרה של הדפדפן, אז הספר תופס את המגע לפניו */
+stage.addEventListener("touchstart", (event) => event.preventDefault(), { passive: false });
+
 stage.addEventListener("pointerdown", (event) => {
   if (animating || turn) return;
   stage.setPointerCapture(event.pointerId);
@@ -546,7 +537,8 @@ window.addEventListener("resize", () => {
 
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
 
-syncRoute();
+/* הספר לא נכנס להיסטוריה של הדפדפן, כדי שהחלקה מהקצה לא תחזור לדף הפתיחה */
+if (location.hash) history.replaceState(null, "", location.pathname);
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});

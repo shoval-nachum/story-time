@@ -16,12 +16,14 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: var(--paper);
+  background: var(--sky);
   color: var(--ink);
   font-family: var(--font);
   overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;
 }
+
+html.reading, html.reading body { background: var(--paper); }
 
 [hidden] { display: none !important; }
 
