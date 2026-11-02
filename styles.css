@@ -141,6 +141,58 @@ html.reading, html.reading body { background: var(--paper); }
 .topic-form button:active { transform: scale(0.97); }
 .topic-form button:focus-visible { outline: 4px solid var(--night); outline-offset: 3px; }
 
+.code-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.code-row label { flex: none; }
+
+.code-row input {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.code-row input:focus { outline: 4px solid var(--night); outline-offset: 2px; }
+
+.topic-form button.ghost {
+  width: auto;
+  min-height: 48px;
+  margin-top: 10px;
+  padding: 0 24px;
+  background: transparent;
+  font-size: 20px;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.topic-form button.ghost:hover { background: transparent; }
+
+/* בזמן הכתיבה נשאר רק הירח, בלי דף וכפתור */
+.home.waiting .logo { display: none; }
+.home.waiting .moon-rise { margin-bottom: 18px; }
+.home.waiting .page-card,
+.home.waiting #create-btn,
+.home.waiting .code-row { display: none; }
+.home.waiting .note {
+  font-size: clamp(24px, 6vw, 32px);
+  font-weight: 700;
+}
+
+.note:empty { display: none; }
+
 .note {
   margin: 12px 0 0;
   color: var(--night);

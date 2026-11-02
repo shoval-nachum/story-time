@@ -61,8 +61,14 @@
         <textarea id="topic" rows="3" placeholder="חיידק שגדל בתוך הפה…" autocomplete="off"></textarea>
       </div>
 
-      <button type="submit">צרו סיפור</button>
-      <p class="note">בינתיים נפתח סיפור לדוגמה. יצירת סיפורים תחובר בשלב הבא.</p>
+      <div id="code-row" class="code-row" hidden>
+        <label for="family-code">קוד משפחתי</label>
+        <input id="family-code" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+
+      <button id="create-btn" type="submit">צרו סיפור</button>
+      <p id="note" class="note" role="status"></p>
+      <button id="cancel-btn" class="ghost" type="button" hidden>ביטול</button>
     </form>
   </main>
 
@@ -73,6 +79,7 @@
     </button>
   </section>
 
+  <script src="config.js"></script>
   <script src="story.js"></script>
   <script src="app.js"></script>
 </body>
