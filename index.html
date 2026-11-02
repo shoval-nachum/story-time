@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Story Time</title>
+  <meta id="theme-color" name="theme-color" content="#2bb3ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Story Time">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="home" class="home">
+    <h1 class="logo" dir="ltr">Story Time</h1>
+
+    <form id="topic-form" class="topic-form">
+      <div class="moon-rise">
+        <div id="moon-hop" class="moon-hop">
+          <svg id="moon" class="moon" viewBox="0 0 400 400" aria-hidden="true">
+            <circle cx="200" cy="200" r="196" fill="#ffd21f"/>
+            <circle cx="72" cy="128" r="26" fill="#f5bd00"/>
+            <circle cx="108" cy="64" r="13" fill="#f5bd00"/>
+            <circle cx="322" cy="96" r="20" fill="#f5bd00"/>
+            <circle cx="344" cy="170" r="11" fill="#f5bd00"/>
+            <ellipse cx="98" cy="196" rx="30" ry="19" fill="#ff9ec7"/>
+            <ellipse cx="302" cy="196" rx="30" ry="19" fill="#ff9ec7"/>
+            <path class="brow" d="M122 104q24-16 48-4" fill="none" stroke="#14213d" stroke-width="10" stroke-linecap="round"/>
+            <path class="brow" d="M230 100q24-12 48 4" fill="none" stroke="#14213d" stroke-width="10" stroke-linecap="round"/>
+            <g class="eye"><g class="pupil">
+              <circle cx="146" cy="150" r="24" fill="#14213d"/>
+              <circle cx="155" cy="141" r="7.5" fill="#fff"/>
+            </g></g>
+            <g class="eye"><g class="pupil">
+              <circle cx="254" cy="150" r="24" fill="#14213d"/>
+              <circle cx="263" cy="141" r="7.5" fill="#fff"/>
+            </g></g>
+            <path class="smile smile-soft" d="M168 202q32 26 64 0" fill="none" stroke="#14213d" stroke-width="10" stroke-linecap="round"/>
+            <path class="smile smile-wide" d="M152 196q48 52 96 0Z" fill="#14213d" stroke="#14213d" stroke-width="8" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="page-card">
+        <svg class="hand hand-a" viewBox="0 0 80 56" aria-hidden="true">
+          <rect x="2" y="2" width="76" height="52" rx="26" fill="#ffd21f"/>
+          <path d="M28 30v14M52 30v14" stroke="#f5bd00" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+        <svg class="hand hand-b" viewBox="0 0 80 56" aria-hidden="true">
+          <rect x="2" y="2" width="76" height="52" rx="26" fill="#ffd21f"/>
+          <path d="M28 30v14M52 30v14" stroke="#f5bd00" stroke-width="6" stroke-linecap="round"/>
+        </svg>
+        <label for="topic">על מה הסיפור?</label>
+        <textarea id="topic" rows="3" placeholder="חיידק שגדל בתוך הפה…" autocomplete="off"></textarea>
+      </div>
+
+      <button type="submit">צרו סיפור</button>
+      <p class="note">בינתיים נפתח סיפור לדוגמה. יצירת סיפורים תחובר בשלב הבא.</p>
+    </form>
+  </main>
+
+  <section id="reader" class="reader" hidden aria-label="ספר">
+    <div id="stage" class="stage"></div>
+    <button id="home-btn" class="home-btn" type="button" aria-label="חזרה לדף הפתיחה">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5M6.5 10v9h11v-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </section>
+
+  <script src="story.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
