@@ -176,27 +176,109 @@ html.reading, html.reading body { background: var(--paper); }
   margin-top: clamp(16px, 4dvh, 40px);
 }
 
+/* שורה ראשונה: כותרת ובחירה. שורה שנייה: סידור ותצוגה.
+   במסך רחב הכול נכנס לשורה אחת. אף כפתור לא נשבר לשורה משלו */
 .library-bar {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "title select"
+    "sort view";
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 12px 8px;
   margin-bottom: 14px;
 }
 
 .library-bar h2 {
+  grid-area: title;
   margin: 0;
   font-size: clamp(26px, 6vw, 34px);
   font-weight: 900;
 }
 
-.library-tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+#select-btn { grid-area: select; justify-self: end; }
+.sort-group { grid-area: sort; justify-self: start; }
+.view-group { grid-area: view; justify-self: end; }
+
+@media (min-width: 640px) {
+  .library-bar {
+    grid-template-columns: 1fr auto auto auto;
+    grid-template-areas: "title sort view select";
+  }
 }
+
+/* במצב בחירה אין צורך בסידור ובתצוגה, והפעולה עוברת לסרגל התחתון */
+.library.selecting .sort-group,
+.library.selecting .view-group { visibility: hidden; }
+
+.library.selecting { padding-bottom: 96px; }
+
+.select-bar {
+  position: fixed;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  background: var(--night);
+  color: var(--paper);
+  box-shadow: 0 -6px 20px rgba(20, 33, 61, 0.25);
+}
+
+.select-count { font-size: 20px; font-weight: 700; }
+
+.delete-btn {
+  min-height: 48px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  background: #e5342a;
+  color: var(--paper);
+  font: inherit;
+  font-size: 20px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.delete-btn:disabled { background: rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.6); cursor: default; }
+.delete-btn:focus-visible { outline: 4px solid var(--moon); outline-offset: 2px; }
+
+.home.waiting .select-bar { display: none; }
+
+/* קישור למכשיר נוסף: צנוע, בתחתית המדף, כדי שהילדה לא תלחץ עליו בטעות */
+.link-row {
+  margin-top: 28px;
+  text-align: center;
+}
+
+.link-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--night);
+  font: inherit;
+  font-size: 16px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-btn:focus-visible { outline: 4px solid var(--night); outline-offset: 2px; border-radius: 8px; }
+
+.link-note {
+  margin: 4px 0 0;
+  color: var(--night);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.link-note:empty { display: none; }
+
+.library.selecting .link-row { visibility: hidden; }
 
 .segmented {
   display: flex;
@@ -217,6 +299,7 @@ html.reading, html.reading body { background: var(--paper); }
   font: inherit;
   font-size: 18px;
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -229,8 +312,6 @@ html.reading, html.reading body { background: var(--paper); }
 
 .tool { background: rgba(20, 33, 61, 0.14); }
 .tool[aria-pressed="true"] { background: var(--night); color: var(--paper); }
-.tool.danger { background: var(--paper); color: #c2261d; }
-.tool.danger:disabled { opacity: 0.5; cursor: default; }
 
 .segmented button:focus-visible,
 .tool:focus-visible,
@@ -244,7 +325,7 @@ html.reading, html.reading body { background: var(--paper); }
   gap: 14px;
 }
 
-.story-list.grid { grid-template-columns: repeat(auto-fill, minmax(min(150px, 42vw), 1fr)); }
+.story-list.grid { grid-template-columns: repeat(auto-fill, minmax(min(150px, 38vw), 1fr)); }
 .story-list.list { grid-template-columns: 1fr; gap: 10px; }
 
 .story-item {
@@ -309,7 +390,7 @@ html.reading, html.reading body { background: var(--paper); }
   background: var(--paper);
 }
 
-.grid.selecting .story-check { position: absolute; top: 12px; left: 12px; }
+.grid.selecting .story-check { position: absolute; top: 8px; left: 8px; width: 26px; height: 26px; }
 
 .story-item[aria-pressed="true"] { box-shadow: 0 0 0 4px var(--night); }
 

@@ -264,14 +264,18 @@ function closeBook() {
   cancelTurn();
 }
 
-/* מדף הספרים: הסיפורים נשמרים במכשיר עצמו */
+/* מדף הספרים. הסיפורים נשמרים בשרת לפי קוד משפחה סודי, ועותק שלהם נשמר במכשיר
+   כדי שהמדף יופיע מיד. סיפור שעוד לא הגיע לשרת מסומן כממתין ונשלח בהזדמנות הבאה */
 
 const LIBRARY_KEY = "story-time-library";
+const FAMILY_KEY = "story-time-family";
 const LIBRARY_VIEW_KEY = "story-time-library-view";
 const library = document.getElementById("library");
 const storyList = document.getElementById("story-list");
 const selectBtn = document.getElementById("select-btn");
 const deleteBtn = document.getElementById("delete-btn");
+const selectBar = document.getElementById("select-bar");
+const selectCount = document.getElementById("select-count");
 const shelf = { sort: "date", view: "grid", selecting: false, selected: new Set() };
 
 function loadStories() {
@@ -292,12 +296,80 @@ function storeStories(stories) {
   }
 }
 
+const isDemo = (story) => String(story.id).startsWith("demo-");
+const isPending = (story) => !story.synced && !isDemo(story);
+
+/* קוד המשפחה: נוצר במכשיר הראשון, ועובר למכשירים נוספים בקישור #family=… */
+function newFamilyCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+let family = null;
+try {
+  family = localStorage.getItem(FAMILY_KEY);
+} catch {}
+const linked = new URLSearchParams(location.hash.slice(1)).get("family");
+if (linked && /^[a-f0-9]{32}$/.test(linked)) {
+  family = linked;
+  history.replaceState(null, "", location.pathname + location.search);
+  /* סיפורים מהמשפחה הקודמת לא שייכים לכאן. ממתינים ודמה נשארים */
+  storeStories(loadStories().filter((story) => !story.synced));
+}
+if (!family || !/^[a-f0-9]{32}$/.test(family)) family = newFamilyCode();
+try {
+  localStorage.setItem(FAMILY_KEY, family);
+} catch {}
+
+async function callApi(payload) {
+  const response = await fetch(window.STORY_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: window.STORY_API_KEY },
+    body: JSON.stringify({ ...payload, family }),
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+/* שולח סיפורים ממתינים, ואז מחליף את העותק במכשיר במה שיש בשרת */
+let syncing = null;
+function syncShelf() {
+  if (!window.STORY_API_URL) return Promise.resolve();
+  if (syncing) return syncing;
+  syncing = (async () => {
+    try {
+      for (const story of loadStories().filter(isPending)) {
+        const { story: saved } = await callApi({
+          action: "save_story",
+          story: { title: story.title, emoji: story.emoji, pages: story.pages.map((lines) => ({ lines })) },
+        });
+        storeStories(loadStories().map((s) => (s.id === story.id ? toCached(saved) : s)));
+      }
+      const { stories } = await callApi({ action: "list_stories" });
+      const local = loadStories().filter((story) => isPending(story) || isDemo(story));
+      storeStories([...stories.map(toCached), ...local]);
+    } catch (error) {
+      console.error("sync", error);
+    } finally {
+      syncing = null;
+      renderLibrary();
+    }
+  })();
+  return syncing;
+}
+
+function toCached(story) {
+  return { ...story, pages: story.pages.map((page) => page.lines ?? page), synced: true };
+}
+
 function saveStory(story) {
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const id = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const stories = loadStories();
   stories.push({ id, created: Date.now(), ...story });
   if (!storeStories(stories)) note.textContent = "אין מקום לשמור את הסיפור במכשיר.";
   renderLibrary();
+  syncShelf();
 }
 
 /* מיון לפי א–ת מתעלם מהניקוד, כדי שאותיות זהות ייחשבו זהות */
@@ -350,7 +422,8 @@ function renderLibrary() {
   });
   const count = shelf.selected.size;
   deleteBtn.disabled = count === 0;
-  deleteBtn.textContent = count ? `מחיקה (${count})` : "מחיקה";
+  selectCount.textContent =
+    count === 0 ? "בחרו סיפורים" : count === 1 ? "נבחר סיפור אחד" : `נבחרו ${count} סיפורים`;
 }
 
 function setSelecting(on) {
@@ -358,7 +431,8 @@ function setSelecting(on) {
   shelf.selected.clear();
   selectBtn.setAttribute("aria-pressed", String(on));
   selectBtn.textContent = on ? "סיום" : "בחירה";
-  deleteBtn.hidden = !on;
+  library.classList.toggle("selecting", on);
+  selectBar.hidden = !on;
   renderLibrary();
 }
 
@@ -392,10 +466,81 @@ document.querySelectorAll("[data-view]").forEach((button) => {
 
 selectBtn.addEventListener("click", () => setSelecting(!shelf.selecting));
 
-deleteBtn.addEventListener("click", () => {
+/* סיפורי דמה לבדיקת המדף, בלי קריאה לשרת.
+   ‎?demo מוסיף אותם, ‎?demo=clear מוחק רק אותם, והסיפורים האמיתיים נשארים */
+const DEMO_STORIES = [
+  ["בְּרוּנוֹ רוֹקֵד בָּלֵט", "🦕"],
+  ["שׁוֹקוֹ וְהַחֹשֶׁךְ", "🦉"],
+  ["פִּלְפֵּל, קַו שֶׁבַע", "🚌"],
+  ["מָיָה וְהַיָּרֵחַ", "🌙"],
+  ["אַרְנָב בַּיָּרֵחַ", "🐰"],
+  ["גְּלִידָה שֶׁלֹּא נָמַסָּה", "🍦"],
+  ["זהבה והכתר שנפל לתוך המרק החם של סבתא ביום שישי בצהריים", "👑"],
+  ["האסטרונאוטית הקטנה", "👩‍🚀"],
+  ["עננה", ""],
+  ["תות", "🍓"],
+  ["אוטובוס", "🚍"],
+  ["ים של בועות", "🫧"],
+  ["הדרקון שהתעטש פרחים", "🐉"],
+  ["1, 2, 3, הפתעה!", "🎁"],
+];
+
+function applyDemo(mode) {
+  const real = loadStories().filter((story) => !String(story.id).startsWith("demo-"));
+  if (mode === "clear") {
+    storeStories(real);
+    return;
+  }
+  const pages = window.SAMPLE_STORY.pages.filter((page) => page.folio).map((page) => page.lines);
+  const day = 24 * 60 * 60 * 1000;
+  const demo = DEMO_STORIES.map(([title, emoji], i) => ({
+    id: `demo-${i}`,
+    created: Date.now() - i * 2.3 * day,
+    title,
+    emoji,
+    pages,
+  }));
+  storeStories([...real, ...demo]);
+}
+
+const demoMode = new URLSearchParams(location.search).get("demo");
+if (demoMode !== null) {
+  applyDemo(demoMode);
+  history.replaceState(null, "", location.pathname);
+}
+
+/* מחיקה מהשרת קודם. אם היא נכשלת, הסיפורים נשארים במדף ולא נעלמים רק מהמכשיר */
+deleteBtn.addEventListener("click", async () => {
   if (!shelf.selected.size) return;
+  const chosen = loadStories().filter((story) => shelf.selected.has(story.id));
+  const onServer = chosen.filter((story) => story.synced).map((story) => story.id);
+  deleteBtn.disabled = true;
+  try {
+    if (onServer.length) await callApi({ action: "delete_stories", ids: onServer });
+  } catch (error) {
+    console.error("delete", error);
+    selectCount.textContent = "המחיקה לא הצליחה. נסו שוב.";
+    deleteBtn.disabled = false;
+    return;
+  }
   storeStories(loadStories().filter((story) => !shelf.selected.has(story.id)));
   setSelecting(false);
+});
+
+/* קישור שמחבר מכשיר נוסף לאותו מדף */
+document.getElementById("link-btn").addEventListener("click", async () => {
+  const link = `${location.origin}${location.pathname}#family=${family}`;
+  const linkNote = document.getElementById("link-note");
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "Story Time", url: link });
+      return;
+    }
+    await navigator.clipboard.writeText(link);
+    linkNote.textContent = "הקישור הועתק. פתחו אותו במכשיר השני.";
+  } catch (error) {
+    if (error.name !== "AbortError") linkNote.textContent = link;
+  }
 });
 
 storyList.addEventListener("click", (event) => {
@@ -413,6 +558,10 @@ storyList.addEventListener("click", (event) => {
 });
 
 renderLibrary();
+syncShelf();
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && reader.hidden) syncShelf();
+});
 
 /* הירח: ממצמץ, מביט באצבע, ומסתכל על הדף ושמח כשכותבים */
 

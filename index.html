@@ -69,25 +69,31 @@
     <section id="library" class="library" hidden aria-labelledby="library-title">
       <div class="library-bar">
         <h2 id="library-title">הסיפורים שלי</h2>
-        <div class="library-tools">
-          <div class="segmented" role="group" aria-label="סידור">
-            <button type="button" data-sort="date" aria-pressed="true">חדשים</button>
-            <button type="button" data-sort="name" aria-pressed="false">א–ת</button>
-          </div>
-          <div class="segmented" role="group" aria-label="תצוגה">
-            <button type="button" data-view="grid" aria-pressed="true" aria-label="ריבועים">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-            </button>
-            <button type="button" data-view="list" aria-pressed="false" aria-label="שורות">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
-          </div>
-          <button id="select-btn" class="tool" type="button" aria-pressed="false">בחירה</button>
-          <button id="delete-btn" class="tool danger" type="button" hidden disabled>מחיקה</button>
+        <button id="select-btn" class="tool" type="button" aria-pressed="false">בחירה</button>
+        <div class="segmented sort-group" role="group" aria-label="סידור">
+          <button type="button" data-sort="date" aria-pressed="true">חדשים</button>
+          <button type="button" data-sort="name" aria-pressed="false">א–ת</button>
+        </div>
+        <div class="segmented view-group" role="group" aria-label="תצוגה">
+          <button type="button" data-view="grid" aria-pressed="true" aria-label="ריבועים">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          </button>
+          <button type="button" data-view="list" aria-pressed="false" aria-label="שורות">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
         </div>
       </div>
       <ul id="story-list" class="story-list grid"></ul>
+      <div class="link-row">
+        <button id="link-btn" class="link-btn" type="button">חיבור מכשיר נוסף למדף</button>
+        <p id="link-note" class="link-note" role="status"></p>
+      </div>
     </section>
+
+    <div id="select-bar" class="select-bar" hidden>
+      <span id="select-count" class="select-count" role="status"></span>
+      <button id="delete-btn" class="delete-btn" type="button" disabled>מחיקה</button>
+    </div>
   </main>
 
   <section id="reader" class="reader" hidden aria-label="ספר">
