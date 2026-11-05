@@ -244,6 +244,7 @@ function openBook() {
   document.documentElement.classList.add("reading");
   view.index = 0;
   layout();
+  narration.start();
 }
 
 function openSaved(story) {
@@ -257,6 +258,7 @@ function openSaved(story) {
 
 function closeBook() {
   if (job) job.controller.abort();
+  narration.stop();
   reader.hidden = true;
   home.hidden = false;
   document.getElementById("theme-color").content = "#2bb3ff";
@@ -933,6 +935,7 @@ function finishTurn(completed) {
   if (completed) view.index += dir * (view.spread ? 2 : 1);
   if (bookChanged) refreshBook();
   else renderStatic();
+  if (completed) narration.start();
 }
 
 /* עמודים חדשים נכנסים לספר רק כשהדף לא באמצע דפדוף */
@@ -946,6 +949,7 @@ function refreshBook() {
   bookChanged = false;
   fitText();
   renderStatic();
+  narration.resumeIfWaiting();
 }
 
 function cancelTurn() {
@@ -1056,6 +1060,152 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "ArrowLeft") autoTurn(1, view.h);
   if (event.key === "ArrowRight") autoTurn(-1, view.h);
 });
+
+/* הקראה. הכפתור נשאר דלוק או כבוי גם בפעם הבאה שהספר נפתח.
+   כשהוא דלוק, הדפים שעל המסך מוקראים לפי הסדר, ואז הספר מדפדף לבד */
+
+const NARRATION_KEY = "story-time-narration";
+const narrateBtn = document.getElementById("narrate-btn");
+/* קובץ קול ריק: מנגנים אותו בלחיצה, כדי שהדפדפן ירשה להשמיע אחר כך בלי לחיצה */
+const SILENCE = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
+const narration = {
+  on: false,
+  audio: new Audio(),
+  run: 0,
+  waiting: false,
+  clips: new Map(),
+
+  text(page) {
+    if (!page || page.kind === "pending") return null;
+    return page.lines.join("\n").replaceAll("**", "").trim() || null;
+  },
+
+  visible() {
+    const at = view.spread ? [view.index, view.index + 1] : [view.index];
+    return at.map((i) => pages[i]);
+  },
+
+  /* קול לכל טקסט נטען פעם אחת בכל פתיחה של האפליקציה */
+  clip(text) {
+    if (!this.clips.has(text)) {
+      const request = fetch(window.STORY_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: window.STORY_API_KEY },
+        body: JSON.stringify({ action: "speak", text }),
+      }).then(async (response) => {
+        if (!response.ok || !response.headers.get("content-type")?.startsWith("audio/")) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || "speech_failed");
+        }
+        return URL.createObjectURL(await response.blob());
+      });
+      request.catch(() => this.clips.delete(text));
+      this.clips.set(text, request);
+    }
+    return this.clips.get(text);
+  },
+
+  /* מכין מראש את הכפולה הבאה, כדי שלא תהיה הפסקה אחרי הדפדוף */
+  prefetchNext() {
+    const step = view.spread ? 2 : 1;
+    for (let i = view.index + step; i < view.index + 2 * step; i++) {
+      const text = this.text(pages[i]);
+      if (text) this.clip(text).catch(() => {});
+    }
+  },
+
+  play(url, run) {
+    return new Promise((resolve) => {
+      if (run !== this.run) return resolve(false);
+      const audio = this.audio;
+      const done = (ok) => {
+        audio.onended = audio.onerror = null;
+        resolve(ok && run === this.run);
+      };
+      audio.onended = () => done(true);
+      audio.onerror = () => done(false);
+      audio.src = url;
+      audio.play().catch(() => done(false));
+    });
+  },
+
+  async start() {
+    const run = ++this.run;
+    this.audio.pause();
+    this.waiting = false;
+    narrateBtn.classList.remove("speaking");
+    if (!this.on || reader.hidden) return;
+    const visible = this.visible();
+    if (visible.some((page) => page?.kind === "pending")) {
+      this.waiting = true;
+      return;
+    }
+    const texts = visible.map((page) => this.text(page)).filter(Boolean);
+    texts.forEach((text) => this.clip(text).catch(() => {}));
+    this.prefetchNext();
+    narrateBtn.classList.add("speaking");
+    try {
+      for (const text of texts) {
+        const url = await this.clip(text);
+        if (!(await this.play(url, run))) return;
+      }
+    } catch (error) {
+      console.error("narration", error);
+      return;
+    } finally {
+      if (run === this.run) narrateBtn.classList.remove("speaking");
+    }
+    if (run !== this.run || !canTurn(1)) return;
+    setTimeout(() => {
+      if (run === this.run && this.on && !reader.hidden) autoTurn(1, view.h);
+    }, 1200);
+  },
+
+  resumeIfWaiting() {
+    if (this.waiting && !this.visible().some((page) => page?.kind === "pending")) this.start();
+  },
+
+  stop() {
+    this.run++;
+    this.waiting = false;
+    this.audio.pause();
+    narrateBtn.classList.remove("speaking");
+  },
+
+  unlock() {
+    if (this.unlocked) return;
+    this.unlocked = true;
+    this.audio.src = SILENCE;
+    this.audio.play().catch(() => {});
+  },
+
+  set(on) {
+    this.on = on;
+    narrateBtn.setAttribute("aria-pressed", String(on));
+    narrateBtn.setAttribute("aria-label", on ? "הקראה פועלת" : "הקראה כבויה");
+    try {
+      localStorage.setItem(NARRATION_KEY, on ? "on" : "off");
+    } catch {}
+  },
+};
+
+try {
+  narration.set(localStorage.getItem(NARRATION_KEY) === "on");
+} catch {
+  narration.set(false);
+}
+
+narrateBtn.addEventListener("click", () => {
+  narration.unlock();
+  narration.set(!narration.on);
+  if (narration.on) narration.start();
+  else narration.stop();
+});
+
+/* כל לחיצה בספר מאשרת לדפדפן להשמיע קול */
+reader.addEventListener("pointerdown", () => narration.unlock(), { capture: true });
+document.addEventListener("click", () => narration.unlock(), { capture: true, once: true });
 
 let resizeTimer;
 window.addEventListener("resize", () => {

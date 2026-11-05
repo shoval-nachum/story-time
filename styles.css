@@ -587,6 +587,39 @@ html.reading, html.reading body { background: var(--paper); }
 
 .home-btn svg { display: block; width: 100%; height: 100%; }
 
+/* כפתור ההקראה: ליד כפתור הבית, גדול מספיק לאצבע של ילדה, וצהוב כשהוא פועל */
+.narrate-btn {
+  position: absolute;
+  top: max(4px, calc(env(safe-area-inset-top) - 4px));
+  left: 50%;
+  width: 52px;
+  height: 52px;
+  margin-left: 32px;
+  padding: 11px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color 140ms ease-out, transform 140ms ease-out;
+}
+
+.narrate-btn svg { display: block; width: 100%; height: 100%; }
+.narrate-btn:active { transform: scale(0.92); }
+.narrate-btn:focus-visible { outline: 4px solid var(--night); outline-offset: 2px; }
+.narrate-btn .waves { display: none; }
+.narrate-btn[aria-pressed="true"] { background: var(--moon); color: var(--night); }
+.narrate-btn[aria-pressed="true"] .waves { display: inline; }
+.narrate-btn[aria-pressed="true"] .mute { display: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .narrate-btn.speaking { animation: narrate-pulse 1.4s ease-in-out infinite; }
+
+  @keyframes narrate-pulse {
+    50% { transform: scale(1.08); }
+  }
+}
+
 .measure {
   visibility: hidden;
   pointer-events: none;
