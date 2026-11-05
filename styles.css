@@ -164,7 +164,158 @@ html.reading, html.reading body { background: var(--paper); }
   font-weight: 700;
 }
 
+.home.waiting .library { display: none; }
+
 .note:empty { display: none; }
+
+/* מדף הספרים */
+.home.has-library { justify-content: flex-start; }
+
+.library {
+  width: min(100%, 960px);
+  margin-top: clamp(16px, 4dvh, 40px);
+}
+
+.library-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.library-bar h2 {
+  margin: 0;
+  font-size: clamp(26px, 6vw, 34px);
+  font-weight: 900;
+}
+
+.library-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.segmented {
+  display: flex;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(20, 33, 61, 0.14);
+}
+
+.segmented button,
+.tool {
+  min-width: 48px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--night);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.segmented button[aria-pressed="true"] { background: var(--paper); }
+
+.segmented svg { width: 22px; height: 22px; }
+
+.tool { background: rgba(20, 33, 61, 0.14); }
+.tool[aria-pressed="true"] { background: var(--night); color: var(--paper); }
+.tool.danger { background: var(--paper); color: #c2261d; }
+.tool.danger:disabled { opacity: 0.5; cursor: default; }
+
+.segmented button:focus-visible,
+.tool:focus-visible,
+.story-item:focus-visible { outline: 4px solid var(--night); outline-offset: 2px; }
+
+.story-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+
+.story-list.grid { grid-template-columns: repeat(auto-fill, minmax(min(150px, 42vw), 1fr)); }
+.story-list.list { grid-template-columns: 1fr; gap: 10px; }
+
+.story-item {
+  position: relative;
+  width: 100%;
+  border: 0;
+  border-radius: 24px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: transform 140ms ease-out, box-shadow 140ms ease-out;
+}
+
+.story-item:active { transform: scale(0.97); }
+
+.grid .story-item {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+}
+
+.list .story-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 72px;
+  padding: 10px 20px;
+  text-align: right;
+}
+
+.story-emoji { line-height: 1; }
+.grid .story-emoji { font-size: clamp(48px, 12vw, 64px); }
+.list .story-emoji { font-size: 38px; }
+
+.story-name {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.grid .story-name { text-align: center; }
+.list .story-name { flex: 1; }
+
+/* במצב בחירה: עיגול סימון בפינה, וסיפור שנבחר מקבל מסגרת */
+.story-check { display: none; }
+
+.selecting .story-check {
+  display: block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--night);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.grid.selecting .story-check { position: absolute; top: 12px; left: 12px; }
+
+.story-item[aria-pressed="true"] { box-shadow: 0 0 0 4px var(--night); }
+
+.story-item[aria-pressed="true"] .story-check {
+  background: var(--night) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 20px no-repeat;
+}
 
 .note {
   margin: 12px 0 0;
@@ -270,6 +421,26 @@ html.reading, html.reading body { background: var(--paper); }
 }
 
 .page.title p { text-align: center; }
+
+/* עמוד שהירח עוד כותב */
+.page.pending {
+  align-items: center;
+  color: var(--muted);
+  font-size: calc(var(--fs, 32px) * 1.5);
+}
+
+.page.pending p {
+  text-align: center;
+  animation: pending-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pending-pulse {
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page.pending p { animation: none; }
+}
 
 .page .folio {
   position: absolute;

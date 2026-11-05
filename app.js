@@ -11,17 +11,17 @@ const cancelBtn = document.getElementById("cancel-btn");
 const note = document.getElementById("note");
 
 const SAMPLE_NOTE = "בינתיים נפתח סיפור לדוגמה. יצירת סיפורים תחובר בקרוב.";
-const STEPS = [
-  { action: "write", status: "הירח כותב סיפור…" },
-  { action: "edit", status: "הירח מלטש את המילים…" },
-  { action: "vocalize", status: "הירח מוסיף ניקוד…" },
-];
+const WAIT_STATUS = "הירח כותב סיפור…";
+const PAGE_COUNT = 12;
+/* כל חלק עובר עריכה וניקוד לבד. העמוד הראשון לבד, כדי שהספר ייפתח מהר,
+   ואחריו זוגות שמתאימים לכפולות בספר */
+const PARTS = [[0, 1], [1, 3], [3, 5], [5, 7], [7, 9], [9, 11], [11, 12]];
 const ERROR_TEXT = {
   bad_topic: "כתבו רעיון קצר לסיפור.",
   refused: "לא הצלחתי לכתוב על זה. נסו רעיון אחר.",
   busy: "יש עומס כרגע. נסו שוב עוד רגע.",
 };
-const GENERIC_ERROR = "משהו השתבש. אפשר ללחוץ שוב, והסיפור ימשיך מאיפה שעצר.";
+const GENERIC_ERROR = "משהו השתבש. אפשר ללחוץ שוב.";
 
 let pages = window.SAMPLE_STORY.pages;
 let job = null;
@@ -47,13 +47,20 @@ function resetForm() {
   note.textContent = window.STORY_API_URL ? "" : SAMPLE_NOTE;
 }
 
-function toBookPages(story) {
-  const body = story.pages.map((page, i) => {
-    const words = page.lines.join(" ").split(/\s+/).length;
-    const short = page.lines.length <= 2 && words <= 6;
-    return { lines: page.lines, folio: String(i + 1), ...(short ? { kind: "short" } : {}) };
-  });
-  return [{ kind: "title", lines: [story.title] }, ...body, { kind: "title", lines: ["הַסּוֹף"] }];
+function bookPage(lines, i) {
+  const words = lines.join(" ").split(/\s+/).length;
+  const short = lines.length <= 2 && words <= 6;
+  return { lines, folio: String(i + 1), ...(short ? { kind: "short" } : {}) };
+}
+
+/* עמוד שעוד לא מוכן. אפשר להגיע אליו, והוא מתמלא ברגע שהטקסט שלו מגיע */
+function pendingPage(i) {
+  return { kind: "pending", lines: ["· · ·"], folio: String(i + 1) };
+}
+
+function emptyBook() {
+  const body = Array.from({ length: PAGE_COUNT }, (_, i) => pendingPage(i));
+  return [{ kind: "title", lines: [""] }, ...body, { kind: "title", lines: ["הַסּוֹף"] }];
 }
 
 async function callStep(payload, signal) {
@@ -72,44 +79,144 @@ async function callStep(payload, signal) {
   return data.story;
 }
 
+/* כתיבה בזרם: כל שורה בתשובה היא הודעה אחת, עם הכותרת, עם עמוד, או עם סיום */
+async function streamWrite(topic, signal, onMessage) {
+  const response = await fetch(window.STORY_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: window.STORY_API_KEY,
+    },
+    body: JSON.stringify({ action: "write_stream", topic }),
+    signal,
+  });
+  if (!response.ok || !response.body) throw new Error("connection");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finished = false;
+  const handle = (line) => {
+    if (!line.trim()) return;
+    const message = JSON.parse(line);
+    if (message.error) throw new Error(message.error);
+    if (message.done) finished = true;
+    else onMessage(message);
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+    lines.forEach(handle);
+  }
+  handle(buffer + decoder.decode());
+  if (!finished) throw new Error("connection");
+}
+
+/* כל חלק עובר עריכה ואז ניקוד. אם אחד מהם נכשל פעמיים, ממשיכים עם מה שיש,
+   כדי שהילדה לא תיתקע באמצע הסיפור */
+async function finishPart(part, signal) {
+  let text = part;
+  for (const action of ["edit_part", "vocalize_part"]) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        text = await callStep({ action, story: text }, signal);
+        break;
+      } catch (error) {
+        if (signal.aborted) throw error;
+        console.error(action, error);
+      }
+    }
+  }
+  return text;
+}
+
 function setWaiting(on) {
   home.classList.toggle("waiting", on);
   cancelBtn.hidden = !on;
   moon.classList.toggle("happy", on);
 }
 
-/* אם שלב נכשל, לחיצה נוספת על אותו רעיון ממשיכה ממנו ולא משלמת שוב על הקודמים */
+/* הסיפור נכתב בזרם. כל חלק שמגיע נערך ומנוקד, לפי הסדר,
+   והספר נפתח כשהכותרת והעמוד הראשון מוכנים. השאר מתמלא בזמן הקריאה */
 async function createStory(topic) {
-  if (!job || job.topic !== topic) job = { topic, step: 0, story: null };
   const controller = new AbortController();
-  job.controller = controller;
+  const { signal } = controller;
+  const draft = { title: null, emoji: "", pages: [], error: null, waiters: [] };
+  const wake = () => draft.waiters.splice(0).forEach((check) => check());
+  const waitForPages = (count) =>
+    new Promise((resolve, reject) => {
+      const check = () => {
+        if (draft.error) reject(draft.error);
+        else if (draft.pages.length >= count) resolve();
+        else draft.waiters.push(check);
+      };
+      check();
+    });
+
+  job = { controller };
   setWaiting(true);
-  try {
-    for (; job.step < STEPS.length; job.step++) {
-      const { action, status } = STEPS[job.step];
-      note.textContent = status;
-      const payload = action === "write" ? { action, topic } : { action, story: job.story };
-      job.story = await callStep(payload, controller.signal);
+  note.textContent = WAIT_STATUS;
+
+  const writing = streamWrite(topic, signal, (message) => {
+    if (message.title !== undefined) {
+      draft.title = message.title;
+      draft.emoji = message.emoji || "";
     }
-    pages = toBookPages(job.story);
+    if (message.lines) draft.pages[message.page] = message.lines;
+    wake();
+  }).catch((error) => {
+    draft.error = error;
+    wake();
+    throw error;
+  });
+  writing.catch(() => {});
+
+  try {
+    const book = emptyBook();
+    for (const [from, to] of PARTS) {
+      await waitForPages(to);
+      const part = await finishPart(
+        { title: draft.title ?? "", pages: draft.pages.slice(from, to).map((lines) => ({ lines })) },
+        signal,
+      );
+      if (from === 0) book[0] = { kind: "title", lines: [part.title] };
+      part.pages.forEach((page, k) => {
+        book[from + k + 1] = bookPage(page.lines, from + k);
+      });
+      if (from === 0) {
+        pages = book;
+        setWaiting(false);
+        resetForm();
+        openBook();
+      } else {
+        refreshBook();
+      }
+    }
+    await writing;
+    job = null;
+    saveStory({
+      title: book[0].lines[0],
+      emoji: draft.emoji,
+      pages: book.slice(1, PAGE_COUNT + 1).map((page) => page.lines),
+    });
+  } catch (error) {
     job = null;
     setWaiting(false);
-    resetForm();
-    openBook();
-  } catch (error) {
-    setWaiting(false);
-    if (controller.signal.aborted) {
+    if (signal.aborted) {
       resetForm();
       return;
     }
+    controller.abort();
     console.error(error);
-    if (error.message === "refused" || error.message === "bad_topic") job = null;
+    if (!reader.hidden) closeBook();
     note.textContent = ERROR_TEXT[error.message] || GENERIC_ERROR;
   }
 }
 
 cancelBtn.addEventListener("click", () => {
-  if (job && job.controller) job.controller.abort();
+  if (job) job.controller.abort();
 });
 
 document.getElementById("topic-form").addEventListener("submit", (event) => {
@@ -139,13 +246,173 @@ function openBook() {
   layout();
 }
 
+function openSaved(story) {
+  pages = [
+    { kind: "title", lines: [story.title] },
+    ...story.pages.map(bookPage),
+    { kind: "title", lines: ["הַסּוֹף"] },
+  ];
+  openBook();
+}
+
 function closeBook() {
+  if (job) job.controller.abort();
   reader.hidden = true;
   home.hidden = false;
   document.getElementById("theme-color").content = "#2bb3ff";
   document.documentElement.classList.remove("reading");
   cancelTurn();
 }
+
+/* מדף הספרים: הסיפורים נשמרים במכשיר עצמו */
+
+const LIBRARY_KEY = "story-time-library";
+const LIBRARY_VIEW_KEY = "story-time-library-view";
+const library = document.getElementById("library");
+const storyList = document.getElementById("story-list");
+const selectBtn = document.getElementById("select-btn");
+const deleteBtn = document.getElementById("delete-btn");
+const shelf = { sort: "date", view: "grid", selecting: false, selected: new Set() };
+
+function loadStories() {
+  try {
+    const stories = JSON.parse(localStorage.getItem(LIBRARY_KEY) || "[]");
+    return Array.isArray(stories) ? stories : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeStories(stories) {
+  try {
+    localStorage.setItem(LIBRARY_KEY, JSON.stringify(stories));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function saveStory(story) {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const stories = loadStories();
+  stories.push({ id, created: Date.now(), ...story });
+  if (!storeStories(stories)) note.textContent = "אין מקום לשמור את הסיפור במכשיר.";
+  renderLibrary();
+}
+
+/* מיון לפי א–ת מתעלם מהניקוד, כדי שאותיות זהות ייחשבו זהות */
+const plainTitle = (title) => title.normalize("NFD").replace(/[\u0591-\u05C7]/g, "");
+const collator = new Intl.Collator("he");
+
+function sortedStories() {
+  const stories = loadStories();
+  if (shelf.sort === "name") {
+    return stories.sort((a, b) => collator.compare(plainTitle(a.title), plainTitle(b.title)));
+  }
+  return stories.sort((a, b) => b.created - a.created);
+}
+
+function renderLibrary() {
+  const stories = sortedStories();
+  library.hidden = stories.length === 0;
+  home.classList.toggle("has-library", stories.length > 0);
+  if (!stories.length && shelf.selecting) setSelecting(false);
+  storyList.className = `story-list ${shelf.view}`;
+  storyList.classList.toggle("selecting", shelf.selecting);
+  storyList.replaceChildren(
+    ...stories.map((story) => {
+      const item = document.createElement("li");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "story-item";
+      button.dataset.id = story.id;
+      if (shelf.selecting) button.setAttribute("aria-pressed", String(shelf.selected.has(story.id)));
+      const emoji = document.createElement("span");
+      emoji.className = "story-emoji";
+      emoji.setAttribute("aria-hidden", "true");
+      emoji.textContent = story.emoji || "📖";
+      const name = document.createElement("span");
+      name.className = "story-name";
+      name.textContent = story.title;
+      const check = document.createElement("span");
+      check.className = "story-check";
+      check.setAttribute("aria-hidden", "true");
+      button.append(emoji, name, check);
+      item.append(button);
+      return item;
+    }),
+  );
+  document.querySelectorAll("[data-sort]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.sort === shelf.sort));
+  });
+  document.querySelectorAll("[data-view]").forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.view === shelf.view));
+  });
+  const count = shelf.selected.size;
+  deleteBtn.disabled = count === 0;
+  deleteBtn.textContent = count ? `מחיקה (${count})` : "מחיקה";
+}
+
+function setSelecting(on) {
+  shelf.selecting = on;
+  shelf.selected.clear();
+  selectBtn.setAttribute("aria-pressed", String(on));
+  selectBtn.textContent = on ? "סיום" : "בחירה";
+  deleteBtn.hidden = !on;
+  renderLibrary();
+}
+
+function rememberShelfView() {
+  try {
+    localStorage.setItem(LIBRARY_VIEW_KEY, JSON.stringify({ sort: shelf.sort, view: shelf.view }));
+  } catch {}
+}
+
+try {
+  const saved = JSON.parse(localStorage.getItem(LIBRARY_VIEW_KEY) || "{}");
+  if (saved.sort === "name" || saved.sort === "date") shelf.sort = saved.sort;
+  if (saved.view === "grid" || saved.view === "list") shelf.view = saved.view;
+} catch {}
+
+document.querySelectorAll("[data-sort]").forEach((button) => {
+  button.addEventListener("click", () => {
+    shelf.sort = button.dataset.sort;
+    rememberShelfView();
+    renderLibrary();
+  });
+});
+
+document.querySelectorAll("[data-view]").forEach((button) => {
+  button.addEventListener("click", () => {
+    shelf.view = button.dataset.view;
+    rememberShelfView();
+    renderLibrary();
+  });
+});
+
+selectBtn.addEventListener("click", () => setSelecting(!shelf.selecting));
+
+deleteBtn.addEventListener("click", () => {
+  if (!shelf.selected.size) return;
+  storeStories(loadStories().filter((story) => !shelf.selected.has(story.id)));
+  setSelecting(false);
+});
+
+storyList.addEventListener("click", (event) => {
+  const button = event.target.closest(".story-item");
+  if (!button) return;
+  const { id } = button.dataset;
+  if (shelf.selecting) {
+    if (shelf.selected.has(id)) shelf.selected.delete(id);
+    else shelf.selected.add(id);
+    renderLibrary();
+    return;
+  }
+  const story = loadStories().find((s) => s.id === id);
+  if (story) openSaved(story);
+});
+
+renderLibrary();
 
 /* הירח: ממצמץ, מביט באצבע, ומסתכל על הדף ושמח כשכותבים */
 
@@ -515,6 +782,20 @@ function finishTurn(completed) {
   const dir = turn.dir;
   turn = null;
   if (completed) view.index += dir * (view.spread ? 2 : 1);
+  if (bookChanged) refreshBook();
+  else renderStatic();
+}
+
+/* עמודים חדשים נכנסים לספר רק כשהדף לא באמצע דפדוף */
+let bookChanged = false;
+function refreshBook() {
+  if (reader.hidden) return;
+  if (turn || animating) {
+    bookChanged = true;
+    return;
+  }
+  bookChanged = false;
+  fitText();
   renderStatic();
 }
 
