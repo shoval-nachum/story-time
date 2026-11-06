@@ -61,6 +61,13 @@
         <textarea id="topic" rows="3" placeholder="חיידק שגדל בתוך הפה…" autocomplete="off"></textarea>
       </div>
 
+      <button id="mic-btn" class="mic-btn" type="button" hidden aria-label="לחצו ודברו כדי לספר על מה הסיפור">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="8.5" y="3" width="7" height="12" rx="3.5" fill="currentColor"/>
+          <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span id="mic-label">ספרו לירח</span>
+      </button>
       <button id="create-btn" type="submit">צרו סיפור</button>
       <p id="note" class="note" role="status"></p>
       <button id="cancel-btn" class="ghost" type="button" hidden>ביטול</button>

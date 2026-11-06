@@ -141,6 +141,36 @@ html.reading, html.reading body { background: var(--paper); }
 .topic-form button:active { transform: scale(0.97); }
 .topic-form button:focus-visible { outline: 4px solid var(--night); outline-offset: 3px; }
 
+/* כפתור ההכתבה: לוחצים ומחזיקים, או נוגעים פעם אחת כדי להתחיל ופעם נוספת כדי לסיים */
+.topic-form button.mic-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 84px;
+  background: var(--moon);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+
+.topic-form button.mic-btn:hover { background: #ffdb4d; }
+.mic-btn svg { width: 40px; height: 40px; flex: none; }
+
+.topic-form button.mic-btn.recording { background: #ff4f6d; color: var(--paper); }
+.topic-form button.mic-btn.busy { opacity: 0.7; cursor: progress; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .mic-btn.recording svg { animation: mic-pulse 1s ease-in-out infinite; }
+
+  @keyframes mic-pulse {
+    50% { transform: scale(1.18); }
+  }
+}
+
+.home.waiting #mic-btn { display: none; }
+
 .topic-form button.ghost {
   width: auto;
   min-height: 48px;

@@ -632,6 +632,153 @@ topicInput.addEventListener("input", () => {
   cheer();
 });
 
+/* הכתבה: הילדה מספרת לירח על מה הסיפור. לוחצים ומחזיקים ומדברים, או נוגעים פעם אחת
+   כדי להתחיל ופעם נוספת כדי לסיים. הטקסט נכנס לתיבה, והירח מקריא אותו בחזרה לאישור */
+
+const micBtn = document.getElementById("mic-btn");
+const micLabel = document.getElementById("mic-label");
+const MAX_RECORDING_MS = 30_000;
+const TAP_MS = 450;
+const dictation = { recorder: null, stream: null, chunks: [], pressedAt: 0, timer: null, busy: false, starting: false };
+const readBack = new Audio();
+
+const canRecord = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && window.STORY_API_URL);
+micBtn.hidden = !canRecord;
+
+function recordingType() {
+  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
+  return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+}
+
+function setMic(state) {
+  micBtn.classList.toggle("recording", state === "recording");
+  micBtn.classList.toggle("busy", state === "busy");
+  micLabel.textContent = state === "recording" ? "הירח מקשיב…" : state === "busy" ? "רגע…" : "ספרו לירח";
+  moon.classList.toggle("happy", state !== "idle");
+}
+
+async function startRecording() {
+  if (dictation.recorder || dictation.busy || dictation.starting) return;
+  dictation.starting = true;
+  readBack.pause();
+  /* נגינה קצרה בזמן הלחיצה מאשרת לדפדפן להשמיע אחר כך את הקול של הירח */
+  readBack.src = SILENCE;
+  readBack.play().catch(() => {});
+  try {
+    dictation.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (error) {
+    console.error("microphone", error);
+    note.textContent = "צריך לאשר גישה למיקרופון כדי לספר לירח.";
+    return;
+  } finally {
+    dictation.starting = false;
+  }
+  const type = recordingType();
+  const recorder = new MediaRecorder(dictation.stream, type ? { mimeType: type } : undefined);
+  dictation.recorder = recorder;
+  dictation.chunks = [];
+  recorder.ondataavailable = (event) => {
+    if (event.data.size) dictation.chunks.push(event.data);
+  };
+  recorder.onstop = () => finishRecording(recorder.mimeType || type);
+  recorder.start();
+  dictation.timer = setTimeout(stopRecording, MAX_RECORDING_MS);
+  note.textContent = "";
+  setMic("recording");
+  lookAt(0, 8);
+}
+
+function stopRecording() {
+  clearTimeout(dictation.timer);
+  if (dictation.recorder?.state === "recording") dictation.recorder.stop();
+}
+
+function toBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function finishRecording(type) {
+  dictation.stream?.getTracks().forEach((track) => track.stop());
+  dictation.stream = null;
+  dictation.recorder = null;
+  const blob = new Blob(dictation.chunks, { type });
+  dictation.chunks = [];
+  if (blob.size < 1000) {
+    setMic("idle");
+    note.textContent = "לא שמעתי. לחצו והחזיקו, ודברו.";
+    return;
+  }
+  dictation.busy = true;
+  setMic("busy");
+  try {
+    const response = await fetch(window.STORY_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: window.STORY_API_KEY },
+      body: JSON.stringify({ action: "transcribe", audio: await toBase64(blob), type: blob.type }),
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    const text = (data.text || "").trim();
+    if (!text) {
+      note.textContent = "לא שמעתי. נסו שוב.";
+      return;
+    }
+    topicInput.value = text;
+    topicInput.dispatchEvent(new Event("input"));
+    note.textContent = "";
+    speakBack(text);
+  } catch (error) {
+    console.error("dictation", error);
+    note.textContent = "לא הצלחתי לשמוע. נסו שוב.";
+  } finally {
+    dictation.busy = false;
+    setMic("idle");
+  }
+}
+
+/* הירח חוזר על הרעיון, כדי שהילדה תדע שהבין אותה */
+async function speakBack(text) {
+  try {
+    const url = await window.fetchSpeech(`רצית סיפור על ${text}?`, window.narrationSettings());
+    readBack.src = url;
+    await readBack.play();
+  } catch (error) {
+    console.error("read back", error);
+  }
+}
+
+micBtn.addEventListener("contextmenu", (event) => event.preventDefault());
+
+micBtn.addEventListener("pointerdown", (event) => {
+  event.preventDefault();
+  if (dictation.recorder) {
+    stopRecording();
+    return;
+  }
+  dictation.pressedAt = performance.now();
+  micBtn.setPointerCapture(event.pointerId);
+  startRecording();
+});
+
+/* שחרור אחרי לחיצה ארוכה מסיים את ההקלטה. נגיעה קצרה משאירה אותה פתוחה עד הנגיעה הבאה */
+micBtn.addEventListener("pointerup", () => {
+  if (dictation.recorder && performance.now() - dictation.pressedAt > TAP_MS) stopRecording();
+});
+
+micBtn.addEventListener("pointercancel", stopRecording);
+
+micBtn.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  if (dictation.recorder) stopRecording();
+  else startRecording();
+});
+
 home.addEventListener("pointermove", (event) => {
   if (document.activeElement === topicInput) return;
   lookToward(event.clientX, event.clientY);
