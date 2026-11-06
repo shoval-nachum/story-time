@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>מעבדת הקול</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap">
+  <style>
+    :root {
+      --ink: #111111;
+      --paper: #ffffff;
+      --muted: #5f5f5f;
+      --sky: #2bb3ff;
+      --moon: #ffd21f;
+      --action: #ff6a2b;
+      --night: #14213d;
+      --line: #d8d8d8;
+      color-scheme: light;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--sky);
+      color: var(--night);
+      font-family: "Rubik", "Arial Hebrew", Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      padding: max(20px, env(safe-area-inset-top)) 16px 48px;
+    }
+
+    h1 { margin: 0 0 4px; font-size: 34px; font-weight: 900; }
+    .lead { margin: 0 0 20px; font-size: 17px; }
+
+    .card {
+      margin-bottom: 16px;
+      padding: 18px 20px;
+      border-radius: 24px;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    .card h2 { margin: 0 0 12px; font-size: 21px; font-weight: 900; color: var(--night); }
+
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+    select, textarea {
+      font: inherit;
+      font-size: 17px;
+      color: var(--ink);
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper);
+    }
+
+    select { min-height: 44px; padding: 0 10px; flex: 1 1 200px; }
+
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      margin-top: 12px;
+      padding: 10px 12px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    select:focus-visible, textarea:focus-visible, button:focus-visible, input:focus-visible {
+      outline: 3px solid var(--night);
+      outline-offset: 2px;
+    }
+
+    .setting { padding: 12px 0; border-top: 1px solid var(--line); }
+    .setting:first-of-type { border-top: 0; padding-top: 0; }
+
+    .setting-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .setting-head label, .setting-head span:first-child { font-weight: 700; font-size: 18px; }
+    .value { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--night); }
+    .hint { margin: 2px 0 6px; color: var(--muted); font-size: 15px; }
+
+    input[type="range"] { width: 100%; accent-color: var(--action); height: 32px; }
+
+    .segmented {
+      display: inline-flex;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(20, 33, 61, 0.1);
+    }
+
+    .segmented button {
+      min-height: 40px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--night);
+      font: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .segmented button[aria-pressed="true"] { background: var(--night); color: var(--paper); }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    .btn {
+      min-height: 52px;
+      padding: 0 22px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--action);
+      color: var(--night);
+      font: inherit;
+      font-size: 19px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .btn.secondary { background: rgba(20, 33, 61, 0.1); font-weight: 700; }
+    .btn:disabled { opacity: 0.5; cursor: default; }
+
+    .sentences { margin: 14px 0 0; padding: 0; list-style: none; }
+
+    .sentences li {
+      margin-bottom: 6px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: #f3f3f3;
+      font-size: 17px;
+    }
+
+    .sentences li.now { background: var(--moon); }
+    .sentences li.gap { background: transparent; padding: 0 10px; color: var(--muted); font-size: 14px; }
+
+    .status { min-height: 1.5em; margin: 10px 0 0; color: var(--muted); font-size: 15px; }
+
+    pre {
+      margin: 12px 0 0;
+      padding: 12px;
+      border-radius: 12px;
+      background: #f3f3f3;
+      font-size: 14px;
+      direction: ltr;
+      text-align: left;
+      white-space: pre-wrap;
+    }
+
+    a { color: var(--night); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>מעבדת הקול</h1>
+    <p class="lead">בוחרים קטע, משנים את ההגדרות ומקשיבים. כשזה נשמע טוב, שומרים.</p>
+
+    <section class="card" aria-labelledby="text-title">
+      <h2 id="text-title">מה להקריא</h2>
+      <div class="row">
+        <select id="story-select" aria-label="סיפור"></select>
+        <select id="page-select" aria-label="עמוד"></select>
+      </div>
+      <textarea id="text" aria-label="הטקסט להקראה" spellcheck="false"></textarea>
+    </section>
+
+    <section class="card" aria-labelledby="voice-title">
+      <h2 id="voice-title">הקול</h2>
+
+      <div class="setting">
+        <div class="setting-head"><label for="speed">מהירות</label><span class="value" id="speed-value"></span></div>
+        <p class="hint">1 היא המהירות הרגילה. פחות מ-1 איטי יותר.</p>
+        <input id="speed" type="range" min="0.7" max="1.2" step="0.05">
+      </div>
+
+      <div class="setting">
+        <div class="setting-head"><span>יציבות</span><span class="value" id="stability-value"></span></div>
+        <p class="hint">משתנה: יותר רגש והפתעות. יציב: אחיד ושקט, וגם דומה יותר בין משפט למשפט.</p>
+        <div class="segmented" role="group" aria-label="יציבות">
+          <button type="button" data-stability="0">משתנה</button>
+          <button type="button" data-stability="0.5">טבעי</button>
+          <button type="button" data-stability="1">יציב</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="pause-title">
+      <h2 id="pause-title">הפסקות</h2>
+
+      <div class="setting">
+        <div class="setting-head"><label for="sentenceGap">בין משפטים</label><span class="value" id="sentenceGap-value"></span></div>
+        <input id="sentenceGap" type="range" min="0" max="3000" step="100">
+      </div>
+
+      <div class="setting">
+        <div class="setting-head"><label for="pageGap">בין שני העמודים בכפולה</label><span class="value" id="pageGap-value"></span></div>
+        <input id="pageGap" type="range" min="0" max="4000" step="100">
+      </div>
+
+      <div class="setting">
+        <div class="setting-head"><label for="turnDelay">לפני דפדוף אוטומטי</label><span class="value" id="turnDelay-value"></span></div>
+        <p class="hint">השקט בסוף העמודים שעל המסך, עד שהספר מדפדף לבד.</p>
+        <input id="turnDelay" type="range" min="0" max="5000" step="100">
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="listen-title">
+      <h2 id="listen-title">הקשבה</h2>
+      <div class="actions">
+        <button id="play-btn" class="btn" type="button">הקראת העמוד</button>
+        <button id="play-two-btn" class="btn secondary" type="button">העמוד וזה שאחריו</button>
+        <button id="stop-btn" class="btn secondary" type="button" disabled>עצירה</button>
+      </div>
+      <ol id="sentences" class="sentences" aria-label="המשפטים כפי שהם מוקראים"></ol>
+      <p id="status" class="status" role="status"></p>
+    </section>
+
+    <section class="card" aria-labelledby="save-title">
+      <h2 id="save-title">שמירה</h2>
+      <p class="hint">שמירה חלה רק על המכשיר הזה. כדי שתחול על כל המכשירים, שלחו את ההגדרות שלמטה.</p>
+      <div class="actions">
+        <button id="save-btn" class="btn" type="button">שמירה במכשיר הזה</button>
+        <button id="reset-btn" class="btn secondary" type="button">חזרה לברירת המחדל</button>
+      </div>
+      <pre id="summary"></pre>
+      <p class="hint">כל שילוב חדש של מהירות ויציבות יוצר הקראה חדשה, כך שעמוד ראשון בכל שילוב עולה כמה מאות תווים מ-ElevenLabs. שינוי ההפסקות לא עולה כלום.</p>
+      <p><a href="./">חזרה לאפליקציה</a></p>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="story.js"></script>
+  <script src="narration.js"></script>
+  <script>
+    "use strict";
+
+    const $ = (id) => document.getElementById(id);
+    const settings = window.narrationSettings();
+    const audio = new Audio();
+    const clips = new Map();
+    let run = 0;
+
+    /* סיפורים: סיפור הדוגמה, ומה שנשמר במדף של המכשיר הזה */
+    function loadStories() {
+      const sample = {
+        title: window.SAMPLE_STORY.title,
+        pages: window.SAMPLE_STORY.pages.filter((page) => page.folio).map((page) => page.lines),
+      };
+      let saved = [];
+      try {
+        saved = JSON.parse(localStorage.getItem("story-time-library") || "[]");
+      } catch {}
+      return [sample, ...saved.filter((story) => Array.isArray(story.pages))];
+    }
+
+    const stories = loadStories();
+    stories.forEach((story, i) => $("story-select").add(new Option(story.title, i)));
+
+    function fillPages() {
+      const story = stories[$("story-select").value];
+      $("page-select").replaceChildren(...story.pages.map((_, i) => new Option(`עמוד ${i + 1}`, i)));
+      showPage();
+    }
+
+    function showPage() {
+      const story = stories[$("story-select").value];
+      $("text").value = story.pages[$("page-select").value].join("\n");
+    }
+
+    $("story-select").addEventListener("change", fillPages);
+    $("page-select").addEventListener("change", showPage);
+    fillPages();
+
+    /* הגדרות */
+    const seconds = (ms) => `${(ms / 1000).toFixed(1)} שנ׳`;
+    const STABILITY_NAMES = { 0: "משתנה", 0.5: "טבעי", 1: "יציב" };
+
+    function render() {
+      $("speed").value = settings.speed;
+      $("speed-value").textContent = settings.speed.toFixed(2);
+      $("stability-value").textContent = STABILITY_NAMES[settings.stability] ?? settings.stability;
+      document.querySelectorAll("[data-stability]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(Number(button.dataset.stability) === settings.stability));
+      });
+      for (const name of ["sentenceGap", "pageGap", "turnDelay"]) {
+        $(name).value = settings[name];
+        $(`${name}-value`).textContent = seconds(settings[name]);
+      }
+      $("summary").textContent = JSON.stringify(settings, null, 2);
+    }
+
+    $("speed").addEventListener("input", (event) => {
+      settings.speed = Number(event.target.value);
+      render();
+    });
+
+    document.querySelectorAll("[data-stability]").forEach((button) => {
+      button.addEventListener("click", () => {
+        settings.stability = Number(button.dataset.stability);
+        render();
+      });
+    });
+
+    for (const name of ["sentenceGap", "pageGap", "turnDelay"]) {
+      $(name).addEventListener("input", (event) => {
+        settings[name] = Number(event.target.value);
+        render();
+      });
+    }
+
+    $("save-btn").addEventListener("click", () => {
+      try {
+        localStorage.setItem(window.NARRATION_OVERRIDE_KEY, JSON.stringify(settings));
+        $("status").textContent = "נשמר. מעכשיו הספר במכשיר הזה מוקרא כך.";
+      } catch {
+        $("status").textContent = "לא הצלחתי לשמור במכשיר הזה.";
+      }
+    });
+
+    $("reset-btn").addEventListener("click", () => {
+      try {
+        localStorage.removeItem(window.NARRATION_OVERRIDE_KEY);
+      } catch {}
+      Object.assign(settings, window.NARRATION_DEFAULTS);
+      render();
+      $("status").textContent = "חזרנו לברירת המחדל.";
+    });
+
+    render();
+
+    /* הקראה */
+    function clip(text) {
+      const key = `${settings.speed}|${settings.stability}|${text}`;
+      if (!clips.has(key)) {
+        const request = window.fetchSpeech(text, settings);
+        request.catch(() => clips.delete(key));
+        clips.set(key, request);
+      }
+      return clips.get(key);
+    }
+
+    const wait = (ms, mine) => new Promise((resolve) => setTimeout(() => resolve(mine === run), ms));
+
+    function play(url, mine) {
+      return new Promise((resolve) => {
+        audio.onended = () => resolve(mine === run);
+        audio.onerror = () => resolve(false);
+        audio.src = url;
+        audio.play().catch(() => resolve(false));
+      });
+    }
+
+    function nextPageText() {
+      const story = stories[$("story-select").value];
+      const next = story.pages[Number($("page-select").value) + 1];
+      return next ? next.join("\n") : null;
+    }
+
+    function showSentences(groups) {
+      const items = [];
+      groups.forEach((sentences, p) => {
+        if (p > 0) items.push(Object.assign(document.createElement("li"), { className: "gap", textContent: `· הפסקה בין עמודים, ${seconds(settings.pageGap)} ·` }));
+        sentences.forEach((text) => {
+          const li = document.createElement("li");
+          li.textContent = text;
+          items.push(li);
+        });
+      });
+      $("sentences").replaceChildren(...items);
+      return [...$("sentences").querySelectorAll("li:not(.gap)")];
+    }
+
+    async function listen(texts) {
+      const mine = ++run;
+      audio.pause();
+      const groups = texts.map((text) => window.splitSentences(text.split("\n"))).filter((g) => g.length);
+      if (!groups.length) return;
+      const items = showSentences(groups);
+      groups.flat().forEach((text) => clip(text).catch(() => {}));
+      $("stop-btn").disabled = false;
+      $("status").textContent = "מכין את הקול…";
+      let n = 0;
+      try {
+        for (const [p, sentences] of groups.entries()) {
+          if (p > 0 && !(await wait(settings.pageGap, mine))) return;
+          for (const [s, text] of sentences.entries()) {
+            if (s > 0 && !(await wait(settings.sentenceGap, mine))) return;
+            const url = await clip(text);
+            if (mine !== run) return;
+            items.forEach((li, i) => li.classList.toggle("now", i === n));
+            $("status").textContent = "";
+            if (!(await play(url, mine))) return;
+            n++;
+          }
+        }
+        $("status").textContent = "סוף הקטע.";
+      } catch (error) {
+        console.error(error);
+        $("status").textContent = `ההקראה נכשלה (${error.message}).`;
+      } finally {
+        if (mine === run) {
+          items.forEach((li) => li.classList.remove("now"));
+          $("stop-btn").disabled = true;
+        }
+      }
+    }
+
+    $("play-btn").addEventListener("click", () => listen([$("text").value]));
+    $("play-two-btn").addEventListener("click", () => {
+      const next = nextPageText();
+      listen(next ? [$("text").value, next] : [$("text").value]);
+    });
+    $("stop-btn").addEventListener("click", () => {
+      run++;
+      audio.pause();
+      $("stop-btn").disabled = true;
+      $("status").textContent = "נעצר.";
+      document.querySelectorAll(".sentences li").forEach((li) => li.classList.remove("now"));
+    });
+  </script>
+</body>
+</html>

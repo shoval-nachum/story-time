@@ -1076,9 +1076,9 @@ const narration = {
   waiting: false,
   clips: new Map(),
 
-  text(page) {
-    if (!page || page.kind === "pending") return null;
-    return page.lines.join("\n").replaceAll("**", "").trim() || null;
+  sentences(page) {
+    if (!page || page.kind === "pending") return [];
+    return window.splitSentences(page.lines);
   },
 
   visible() {
@@ -1086,32 +1086,22 @@ const narration = {
     return at.map((i) => pages[i]);
   },
 
-  /* קול לכל טקסט נטען פעם אחת בכל פתיחה של האפליקציה */
-  clip(text) {
-    if (!this.clips.has(text)) {
-      const request = fetch(window.STORY_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", apikey: window.STORY_API_KEY },
-        body: JSON.stringify({ action: "speak", text }),
-      }).then(async (response) => {
-        if (!response.ok || !response.headers.get("content-type")?.startsWith("audio/")) {
-          const data = await response.json().catch(() => ({}));
-          throw new Error(data.error || "speech_failed");
-        }
-        return URL.createObjectURL(await response.blob());
-      });
-      request.catch(() => this.clips.delete(text));
-      this.clips.set(text, request);
+  /* קול לכל משפט נטען פעם אחת בכל פתיחה של האפליקציה, לכל הגדרות קול */
+  clip(text, settings) {
+    const key = `${settings.speed}|${settings.stability}|${text}`;
+    if (!this.clips.has(key)) {
+      const request = window.fetchSpeech(text, settings);
+      request.catch(() => this.clips.delete(key));
+      this.clips.set(key, request);
     }
-    return this.clips.get(text);
+    return this.clips.get(key);
   },
 
   /* מכין מראש את הכפולה הבאה, כדי שלא תהיה הפסקה אחרי הדפדוף */
-  prefetchNext() {
+  prefetchNext(settings) {
     const step = view.spread ? 2 : 1;
     for (let i = view.index + step; i < view.index + 2 * step; i++) {
-      const text = this.text(pages[i]);
-      if (text) this.clip(text).catch(() => {});
+      this.sentences(pages[i]).forEach((text) => this.clip(text, settings).catch(() => {}));
     }
   },
 
@@ -1130,6 +1120,10 @@ const narration = {
     });
   },
 
+  pause(ms, run) {
+    return new Promise((resolve) => setTimeout(() => resolve(run === this.run), ms));
+  },
+
   async start() {
     const run = ++this.run;
     this.audio.pause();
@@ -1141,14 +1135,19 @@ const narration = {
       this.waiting = true;
       return;
     }
-    const texts = visible.map((page) => this.text(page)).filter(Boolean);
-    texts.forEach((text) => this.clip(text).catch(() => {}));
-    this.prefetchNext();
+    const settings = window.narrationSettings();
+    const pagesToRead = visible.map((page) => this.sentences(page)).filter((list) => list.length);
+    pagesToRead.flat().forEach((text) => this.clip(text, settings).catch(() => {}));
+    this.prefetchNext(settings);
     narrateBtn.classList.add("speaking");
     try {
-      for (const text of texts) {
-        const url = await this.clip(text);
-        if (!(await this.play(url, run))) return;
+      for (const [p, sentences] of pagesToRead.entries()) {
+        if (p > 0 && !(await this.pause(settings.pageGap, run))) return;
+        for (const [s, text] of sentences.entries()) {
+          if (s > 0 && !(await this.pause(settings.sentenceGap, run))) return;
+          const url = await this.clip(text, settings);
+          if (!(await this.play(url, run))) return;
+        }
       }
     } catch (error) {
       console.error("narration", error);
@@ -1159,7 +1158,7 @@ const narration = {
     if (run !== this.run || !canTurn(1)) return;
     setTimeout(() => {
       if (run === this.run && this.on && !reader.hidden) autoTurn(1, view.h);
-    }, 1200);
+    }, settings.turnDelay);
   },
 
   resumeIfWaiting() {
