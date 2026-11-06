@@ -1,4 +1,4 @@
-const CACHE = "story-time-v21";
+const CACHE = "story-time-v22";
 const SHELL = [
   "./",
   "index.html",

@@ -69,6 +69,13 @@ html.reading, html.reading body { background: var(--paper); }
   margin: 0;
 }
 
+/* בלי סיפורים אין ספרייה: הבמה נמתחת עד תחתית המסך, כדי שהגוף ימשיך עד למטה */
+.home:not(.has-library) .home-stage {
+  flex: 1 0 auto;
+  height: auto;
+  min-height: 174cqw;
+}
+
 /* במסך רחב (טאבלט) העמודה צרה מהמסך: הגוף ממשיך לכל הרוחב מתחת לראש, כמו כתפיים */
 .home-stage::before {
   content: "";
