@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Story Time: עמוד הבית</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap">
+<style>
+:root{--bg:#efeae0;--ink:#2b1f4a;color-scheme:light}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);font-family:Rubik,Arial,sans-serif;color:var(--ink)}
+main{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px 16px}
+.phone{position:relative;width:min(100%,360px,calc((100dvh - 140px) * 360 / 740));aspect-ratio:360/740;border-radius:40px;overflow:hidden;box-shadow:0 18px 50px rgba(43,31,74,.18);border:7px solid #1c1c28;container-type:inline-size}
+.phone *{font-family:inherit}
+.g{background:var(--top,#ffeec4);--yel:#c9b5f6;--ink:#2b1f4a}
+.g .bumps circle{fill:var(--yel)}
+.g .glogo{position:absolute;top:7cqw;left:0;right:0;text-align:center;font:900 4.6cqw/1 Rubik,sans-serif;color:var(--ink);direction:ltr;letter-spacing:-.03em}
+.g .hello{position:absolute;top:35cqw;left:0;right:0;text-align:center;color:var(--ink)}
+.g .line{display:block;height:6cqw;font:700 4.6cqw/6cqw Rubik,sans-serif;opacity:.6;transition:opacity .35s,transform .35s}
+.g .line.out{opacity:0;transform:translateY(-2cqw)}
+.g .name{display:block;margin-top:1cqw;font:900 25cqw/1 Rubik,sans-serif;letter-spacing:-.03em}
+.g .dome{position:absolute;left:-3%;right:-3%;top:92cqw;bottom:-10cqw;border-radius:53cqw 53cqw 0 0;background:var(--yel)}
+.g .gface{position:absolute;left:calc(50% + 5cqw);top:90cqw;width:81cqw;aspect-ratio:144/122;transform:translateX(-50%);cursor:pointer}
+.g .gface svg{width:100%;height:100%;display:block}
+.g .think{position:absolute;z-index:3;pointer-events:none}
+.g .think,.g .think .emo{transform:scale(0)}
+.g .mouth{opacity:0}
+.g .rig,.g .tiltg{transform-box:fill-box;transform-origin:50% 100%}
+.g .tiltg{transition:transform .5s ease-in-out}
+.g .mouth.on{opacity:1}
+.g .gface{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.g .dome{cursor:pointer}
+.g .gscroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;overscroll-behavior:contain}
+.g .gscroll::-webkit-scrollbar{display:none}
+.g .gstage{position:relative;z-index:1;height:174cqw}
+.g .glib{position:relative;background:var(--yel);padding:5cqw 5cqw 10cqw}
+.g .glib h3{margin:0 1cqw 3.5cqw;display:flex;align-items:baseline;gap:2cqw;font:900 6.4cqw/1 Rubik,sans-serif;color:#151515}
+.g .glib h3 span{font:700 3.4cqw/1 Rubik,sans-serif;padding:1cqw 2.4cqw;border-radius:99px;background:#151515;color:var(--yel)}
+.g .ggrid{display:grid;grid-template-columns:1fr 1fr;gap:4cqw}
+.g .gcard{border-radius:6cqw;overflow:hidden;background:#fff;box-shadow:0 1.4cqw 0 rgba(150,40,90,.14)}
+.g .gcard .art{position:relative;aspect-ratio:4/5;display:grid;place-items:center;font-size:20cqw;overflow:hidden}
+.g .gcard .art::before,.g .gcard .art::after{content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.28)}
+.g .gcard .art::before{width:70%;aspect-ratio:1;left:-20%;bottom:-25%}
+.g .gcard .art::after{width:35%;aspect-ratio:1;right:-8%;top:8%}
+.g .gcard .art span{position:relative;z-index:1;filter:drop-shadow(0 1.5cqw 0 rgba(0,0,0,.12))}
+.g .gcard b{display:block;padding:2.6cqw 3cqw 3.2cqw;font:700 3.8cqw/1.25 Rubik,sans-serif;color:#151515}
+.g .think,.g .think .emo{transform:scale(0)}
+/* עפעפיים ובליטות העין */
+.g .lidfill{fill:var(--yel)}
+.g .lid{transition:transform .3s ease}
+.g .lid-top{transform:translateY(-15px)}
+.g .lid-low{transform:translateY(15px)}
+.g .happy{opacity:0;transition:opacity .12s}
+.g .waves{opacity:0;transition:opacity .2s}
+.g.st-closed .lids{opacity:0}.g.st-closed .happy{opacity:1}
+.g.st-ear .waves{opacity:1}
+.g.st-smiley .lid-low{transform:translateY(5px)}
+@media (prefers-reduced-motion:no-preference){
+  .g .gface svg{animation:breathe 3.2s ease-in-out infinite}
+  .g .waves path{animation:wave-pulse 1.2s ease-out infinite}
+  .g .waves path:nth-child(2){animation-delay:.2s}.g .waves path:nth-child(3){animation-delay:.4s}
+  @keyframes breathe{50%{transform:translateY(-.8cqw)}}
+  @keyframes wave-pulse{0%{opacity:0;transform:translateX(-2px)}30%{opacity:1}100%{opacity:0;transform:translateX(3px)}}
+}
+/* הפתק: נשלף מלמטה, ידיים מקו דק מחזיקות אותו, ועיפרון כותב עליו שורה אחרי שורה */
+.g .notes{position:absolute;left:0;top:0;width:100cqw;height:174cqw;overflow:visible;pointer-events:none;z-index:2}
+.g .note-g{opacity:0;transform-box:view-box;transform-origin:49px 141px}
+/* זום אין בזמן יצירת סיפור: הדמות קרובה יותר והספרייה יוצאת מהפריים */
+.g .gscroll{transform-origin:50% 112cqw;transition:transform .7s cubic-bezier(.3,.8,.25,1)}
+.g .glib>*{transition:opacity .4s ease}
+.g.focus .gscroll{transform:scale(1.32);overflow:hidden}
+.g.focus .glib>*{opacity:0}
+.picker{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;max-width:420px}
+.picker button{padding:7px 12px;border:0;border-radius:99px;background:#fff;color:var(--ink);font:700 14px Rubik,sans-serif;cursor:pointer;box-shadow:0 1px 0 rgba(0,0,0,.06)}
+.picker button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.hint{margin:0;font-size:14px;opacity:.7;text-align:center}
+</style></head><body><main>
+<div class="phone g" id="g"></div>
+<p class="hint">לחצו על הדמות כדי שתקשיב. לחיצה נוספת מסיימת.</p>
+<div class="picker" id="listenPick" aria-label="פרצוף הקשבה"></div>
+</main>
+<script>
+const stories=[["🦉","שוקו והחושך"],["🍦","גלידה שלא נמסה"],["👑","זהבה והכתר"],["👩‍🚀","האסטרונאוטית הקטנה"],["🐟","דגי המדגדגת"],["🦷","החיידק בפה"]];
+const gart=["#6fcf9b","#ffc94d","#f5a623","#5cc0f5","#4fd1a5","#ff7b54"];
+const eye=(cx,s)=>`<g class="eye"><ellipse cx="${cx}" cy="128" rx="12" ry="10.5" fill="#fff"/>
+  <g clip-path="url(#eyeclip-${s})"><circle class="pupil" cx="${cx+1}" cy="129" r="5.8" fill="#151515"/><g class="lid lid-top"><rect class="lidfill" x="${cx-15}" y="104" width="30" height="24"/><path d="M${cx-15} 128h30" stroke="#151515" stroke-width="2.6"/></g>
+  <g class="lid lid-low"><path class="lidfill" d="M${cx-15} 133q15-8 30 0V152H${cx-15}z"/></g></g></g>`;
+document.getElementById("g").innerHTML=`<div class="gscroll"><div class="gstage"><div class="glogo">Story Time</div>
+<div class="hello"><span class="line" id="g-line">אז מה ניצור היום?</span><span class="name">מיה</span></div>
+<div class="dome" style="bottom:-2px"></div><svg class="bumps" viewBox="0 0 100 174" aria-hidden="true"></svg><svg class="tex" viewBox="0 0 100 174" aria-hidden="true"></svg>
+<div class="gface"><svg viewBox="78 74 144 122" aria-hidden="true">
+  <defs><clipPath id="eyeclip-l"><ellipse cx="136" cy="128" rx="12" ry="10.5"/></clipPath><clipPath id="eyeclip-r"><ellipse cx="164" cy="128" rx="12" ry="10.5"/></clipPath></defs>
+  <g class="tiltg"><g class="rig">
+  <g class="lids">${eye(136,"l")}${eye(164,"r")}</g>
+  <path class="happy" d="M126 131q10-10 20 0M154 131q10-10 20 0" fill="none" stroke="#151515" stroke-width="4.5" stroke-linecap="round"/>
+  <g class="waves" fill="none" stroke="#151515" stroke-width="2.6" stroke-linecap="round"><path d="M190 120q4 6 0 12"/><path d="M196 116q6 10 0 20"/><path d="M202 112q8 14 0 28"/></g>
+  <path class="mouth m-smile on" d="M139 150q11 9 22 0" fill="none" stroke="#151515" stroke-width="4.5" stroke-linecap="round"/>
+  <path class="mouth m-smirk" d="M141 151q10 6 19-3" fill="none" stroke="#151515" stroke-width="4.5" stroke-linecap="round"/>
+  <path class="mouth m-soft" d="M143 151q7 5 14 0" fill="none" stroke="#151515" stroke-width="4.5" stroke-linecap="round"/>
+  <path class="mouth m-aha" d="M140 147q10 15 20 0z" fill="#151515" stroke="#151515" stroke-width="3" stroke-linejoin="round"/>
+  <path class="mouth m-ooh" d="M143 148q7 12 14 0z" fill="#151515" stroke="#151515" stroke-width="3" stroke-linejoin="round"/>
+  <ellipse class="mouth m-o" cx="150" cy="151" rx="4.2" ry="5" fill="#151515"/>
+  <path class="mouth m-grin" d="M135 147q15 15 30 0" fill="none" stroke="#151515" stroke-width="4.5" stroke-linecap="round"/>
+  <g class="mouth m-focus"><path d="M150.6 152.6q-.2 6.6 4.6 6.8q4.6.2 4.2-6.6z" fill="#ff8fa6" stroke="#151515" stroke-width="2.2" stroke-linejoin="round"/><path d="M155.2 154.2v2.8" stroke="#e46f8c" stroke-width="1.2" stroke-linecap="round"/><path d="M141 150q9 6 18.6-.6" fill="none" stroke="#151515" stroke-width="4.5" stroke-linecap="round"/></g>
+</g></g></svg></div><svg class="notes" viewBox="0 0 100 174" aria-hidden="true">
+  <defs><clipPath id="paper-clip"><rect class="paper-clip" x="38" y="141" width="22" height="16"/></clipPath>
+    <linearGradient id="roll2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#f3f0fa"/><stop offset=".8" stop-color="#c9bee6"/><stop offset="1" stop-color="#a698d0"/></linearGradient>
+    <linearGradient id="roll" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f1fb"/><stop offset=".55" stop-color="#d9d2ec"/><stop offset="1" stop-color="#bfb4dd"/></linearGradient></defs>
+  <!-- היד הכותבת עוברת מאחורי הדף אל העיפרון, ורק הקצה של העיפרון מציץ מעליו -->
+  <path class="arm-write" d="M76 160Q66 158 56 147" fill="none" stroke="#151515" stroke-width=".8" stroke-linecap="round" opacity="0"/>
+  <g class="pencil" opacity="0"><g class="pencil-r"><rect x="-1" y="-11" width="2" height="10.5" rx=".4" fill="#ffc94d"/><rect x="-1" y="-12.4" width="2" height="1.8" rx=".5" fill="#f6a9c8"/><rect x="-1" y="-10.8" width="2" height=".6" fill="#e0a92e"/>
+    <ellipse cx="0" cy="-1" rx="1.9" ry="1.2" fill="#151515"/></g></g>
+  <g class="note-g">
+    <g clip-path="url(#paper-clip)"><rect x="38.5" y="141" width="21" height="34" fill="#fff"/>
+      <g stroke="#e4dff0" stroke-width=".45">${[0,1,2,3,4,5].map(i=>`<path d="M41 ${147+i*4}h16"/>`).join("")}</g></g>
+    <path d="M54.4 141h5.1v5.6q-1.2-3.2-5.1-5.6z" fill="#ebe7f5"/><path d="M54.4 141q3.9 2.4 5.1 5.6l-3.6-1.2q-.4-2.6-1.5-4.4z" fill="url(#roll)"/>
+    <g class="paper-roll"><rect class="roll-shadow" x="38.5" y="0" width="21" height="1.6" fill="#2b1f4a" opacity=".07"/><ellipse class="roll-drop" cx="49" cy="0" rx="11" ry="1.1" fill="#2b1f4a" opacity=".12"/><rect class="roll-body" x="37.8" y="0" width="22.4" height="3.8" rx="1.9" fill="url(#roll2)"/></g>
+  </g>
+  <!-- היד המחזיקה: קו דק ואצבע אליפסה אחת על קצה הדף -->
+  <g class="arm-hold" opacity="0"><path d="M24 158q8 4 14.6-2.4" fill="none" stroke="#151515" stroke-width=".8" stroke-linecap="round"/>
+    <ellipse cx="39.6" cy="154.4" rx="1.9" ry="1.2" fill="#151515" transform="rotate(-15 39.6 154.4)"/></g>
+  <g class="arm-chin" opacity="0"><path d="M76 160C71 151 66 141 60.4 136.6" fill="none" stroke="#151515" stroke-width=".8" stroke-linecap="round"/>
+    <ellipse cx="59.2" cy="136.4" rx="1.9" ry="1.2" fill="#151515" transform="rotate(20 59.2 136.4)"/></g>
+</svg></div>
+<section class="glib"><h3>הסיפורים שלי <span>6</span></h3><div class="ggrid">${stories.map(([e,t],i)=>`<div class="gcard"><div class="art" style="background:${gart[i]}"><span>${e}</span></div><b>${t}</b></div>`).join("")}</div></section></div>`;
+
+const G=document.getElementById("g"), $=(q)=>G.querySelector(q);
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+const still=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+
+/* ראש מתולתל ונקודות אור */
+const bumps=(()=>{const r=9.5,R=53,out=[];const step=(r*1.55)/R;for(let a=Math.PI;a<=Math.PI*2+1e-6;a+=step){out.push(`<circle cx="${(50+Math.cos(a)*R).toFixed(2)}" cy="${(145+Math.sin(a)*R).toFixed(2)}" r="${r}"/>`);}return out.join("");})();
+$(".bumps").innerHTML=bumps;
+$(".tex").innerHTML=`<defs><filter id="tx-f" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".75" numOctaves="1" seed="8" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  3.4 0 0 0 -2.2"/></filter>
+  <clipPath id="tx-clip"><circle cx="50" cy="145" r="53"/>${bumps}</clipPath>
+  <linearGradient id="tx-fg" x1="0" y1="80" x2="0" y2="165" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
+  <mask id="tx-m" maskUnits="userSpaceOnUse" x="0" y="70" width="100" height="104"><rect x="0" y="70" width="100" height="104" fill="url(#tx-fg)"/></mask></defs>
+  <g clip-path="url(#tx-clip)"><g mask="url(#tx-m)"><rect x="0" y="70" width="100" height="104" filter="url(#tx-f)" opacity=".8"/></g></g>`;
+
+/* שורה מתחלפת מעל השם */
+const lines=["אז מה ניצור היום?","על מה נחלום הלילה?","יש לך רעיון לסיפור?","ספרי לי על מה הסיפור"];
+const ideas=["🐉","🚀","🦄","🧁","🐢","🏰","🌈","🦖"];
+let li=0, ii=-1, mode="idle", epoch=0;
+function setLine(t){const el=document.getElementById("g-line"); el.classList.add("out"); setTimeout(()=>{el.textContent=t; el.classList.remove("out");},300);}
+setInterval(()=>{ if(mode==="idle"){ li=(li+1)%lines.length; setLine(lines[li]); } },3500);
+
+function pose({look=[0,0],mouth="smile",wide=1}={}){
+  const [x,y]=[Math.max(-5,Math.min(5,look[0])),Math.max(-3.5,Math.min(4,look[1]))];
+  G.querySelectorAll(".pupil").forEach(p=>p.style.transform=`translate(${x}px,${y}px)`);
+  $(".lids").style.transform=`scale(${wide})`;
+  G.querySelectorAll(".mouth").forEach(m=>m.classList.toggle("on",m.classList.contains("m-"+mouth)));
+}
+function blink(){ const l=$(".lids"); const t=l.style.transform||""; l.animate([{transform:t},{transform:t+" scaleY(.1)"},{transform:t}],{duration:160}); }
+const pop=(el,delay,frames,dur)=>el.animate(frames,{duration:dur,delay,easing:"cubic-bezier(.2,.9,.3,1.4)",fill:"forwards"});
+
+/* בועות דיבור לבנות עם אימוג'י, בצד ובצורה אחרת בכל פעם */
+const circ=(pts)=>pts.map(([x,y,r])=>`<circle cx="${x}" cy="${y}" r="${r}"/>`).join("");
+const flower=()=>{const n=10,out=[];for(let i=0;i<n;i++){const a=i/n*Math.PI*2;out.push([50+Math.cos(a)*30,42+Math.sin(a)*26,13]);}return circ(out)+'<ellipse cx="50" cy="42" rx="32" ry="28"/>';};
+const shapes=[flower,()=>circ([[30,46,20],[48,30,22],[70,36,20],[76,54,15],[56,60,18],[36,60,14]])+'<ellipse cx="52" cy="46" rx="30" ry="20"/>',()=>'<path d="M50 10C74 9 90 24 89 44S72 76 49 75 10 63 11 42 27 11 50 10z"/>',()=>'<rect x="8" y="14" width="86" height="56" rx="28"/>'];
+const tail='<path d="M30 64L16 88L48 70Z" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>';
+let side=Math.random()<.5?1:-1, bubble=null, lastShape=-1;
+function openBubble(){
+  side=-side; if(Math.random()<.25) side=-side;
+  let k; do{k=Math.floor(Math.random()*shapes.length);}while(k===lastShape); lastShape=k;
+  const u=rnd(.85,1.3), w=26*u, top=rnd(80,88)-(u-1)*6, edge=rnd(2,7);
+  const b=document.createElement("div"); b.className="think";
+  b.style.cssText=`top:${top}cqw;${side>0?"right":"left"}:${edge}cqw;width:${w}cqw;aspect-ratio:100/90;transform-origin:${side>0?"16%":"84%"} 98%`;
+  b.innerHTML=`<svg viewBox="0 0 100 90" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 1cqw 1.4cqw rgba(43,31,74,.12));${side>0?"":"transform:scaleX(-1)"}"><g fill="#fff">${shapes[k]()}${tail}</g></svg><span class="emo" style="position:absolute;left:0;right:0;top:${k===3?"14%":"20%"};text-align:center;font-size:${11*u}cqw;line-height:1;display:block">${ideas[ii]}</span>`;
+  $(".gstage").appendChild(b); bubble=b;
+  const e=b.querySelector(".emo"), tilt=rnd(-6,6);
+  pop(b,0,[{transform:`scale(0) rotate(${-14*side}deg)`},{transform:`scale(1.12) rotate(${tilt+4*side}deg)`,offset:.6},{transform:`scale(.95) rotate(${tilt-side}deg)`,offset:.82},{transform:`scale(1) rotate(${tilt}deg)`}],520);
+  pop(e,280,[{transform:"scale(0) rotate(-30deg)"},{transform:"scale(1.25) rotate(10deg)",offset:.6},{transform:`scale(1) rotate(${-tilt}deg)`}],420);
+}
+function closeBubble(){
+  const b=bubble; bubble=null; if(!b) return;
+  const out=(el,delay)=>el.animate([{transform:getComputedStyle(el).transform},{transform:"scale(1.1)",offset:.3},{transform:"scale(0)"}],{duration:260,delay,easing:"ease-in",fill:"forwards"});
+  out(b.querySelector(".emo"),0); out(b,90).finished.then(()=>b.remove());
+}
+
+/* לולאת הרעיונות: מחפשת בעיניים, "אהה!", ובועה קופצת. נגיעה עוצרת אותה */
+const nap=async(ms)=>{const e=epoch; if(mode!=="idle") throw "busy"; await sleep(ms); if(e!==epoch||mode!=="idle") throw "interrupted";};
+async function thinkLoop(){
+  if(still) return;
+  await sleep(900);
+  for(;;){
+    try{
+      if(mode!=="idle") throw "busy";
+      /* ניקוי בתחילת כל סבב: בלי בועות או פתק שנשארו מהקשבה קודמת */
+      G.querySelectorAll(".think").forEach(t=>{ if(t!==bubble) t.remove(); });
+      if(+getComputedStyle(N(".note-g")).opacity>0) hideNote();
+      const ns=-side;
+      pose(); await nap(900); blink();
+      pose({look:[3*ns,-5],mouth:"smirk"}); await nap(800);
+      pose({look:[-3*ns,-4],mouth:"smirk"}); await nap(650);
+      pose({look:[4*ns,-6],mouth:"smile"}); await nap(550);
+      ii=(ii+1)%ideas.length;
+      pose({look:[0,-2],mouth:"aha",wide:1.18}); openBubble(); await nap(450);
+      pose({look:[5*side,-4],mouth:"grin"}); await nap(2300);
+      closeBubble(); pose({look:[0,1]}); await nap(400); blink(); await nap(1300);
+    }catch(x){
+      closeBubble();
+      while(mode!=="idle") await sleep(150);
+      await sleep(1600);
+    }
+  }
+}
+
+/* פרצופי הקשבה. כל אחד הוא תנוחה ולולאה קטנה שרצה כל עוד היא מקשיבה */
+const faceSvg=$(".gface svg"), rig=$(".gface .rig"), tiltG=$(".gface .tiltg");
+const squish=()=>rig.animate([{transform:"scale(1,1)"},{transform:"scale(1.06,.9)",offset:.35},{transform:"scale(.97,1.05)",offset:.7},{transform:"scale(1,1)"}],{duration:380,easing:"ease-out"});
+const nod=(d=1.4,ms=340)=>rig.animate([{transform:"translateY(0)"},{transform:`translateY(${d*2.2}px)`,offset:.45},{transform:"translateY(0)"}],{duration:ms,easing:"ease-in-out"});
+const tilt=(deg,ms=500)=>{ tiltG.style.transitionDuration=ms+"ms"; tiltG.style.transform=`rotate(${deg}deg)`; };
+const pupils=()=>G.querySelectorAll(".pupil");
+/* פתק: מחזיקה אותו מול עצמה וכותבת על הצד הפנימי. רואים את גב הדף ואת קצה העיפרון שזז מעליו.
+   כשהיא חושבת, היד עם העיפרון עולה לסנטר. העיניים זזות כל הזמן במעבר רך, בלי קפיצות */
+const N=(q)=>G.querySelector(".notes "+q);
+const fade=(el,to,ms=200,delay=0)=>el.animate([{opacity:getComputedStyle(el).opacity},{opacity:to}],{duration:ms,delay,fill:"forwards"});
+function look(x,y,ms=180){ pupils().forEach(p=>{p.style.transition=`transform ${ms}ms ease-out`; p.style.transform=`translate(${x}px,${y}px)`;}); }
+function placePencil(x,y,r){ N(".pencil").setAttribute("transform",`translate(${x} ${y})`); N(".pencil-r").setAttribute("transform",`rotate(${r})`);
+  N(".arm-write").setAttribute("d",`M76 160Q${(x+76)/2+4} ${y+14} ${x} ${y-1}`); }
+/* הדף נפרש כלפי מטה בזמן הכתיבה, כמו גליל, ונוסע קצת למטה עם כל משיכת עיפרון */
+let paperH=12;
+function setPaper(h){ paperH=h; N(".paper-clip").setAttribute("height",h); const b=141+h; N(".roll-body").setAttribute("y",b-1.9); N(".roll-shadow").setAttribute("y",b-3.4); N(".roll-drop").setAttribute("cy",b+2.4); }
+function rollUp(){ return new Promise(res=>{const h0=paperH,t0=performance.now(); const step=(t)=>{const k=Math.min(1,(t-t0)/420); setPaper(h0-(h0-12)*(1-Math.pow(1-k,3))); k<1?requestAnimationFrame(step):res();}; requestAnimationFrame(step);}); }
+function nudgeNote(){ N(".note-g").animate([{transform:"translateY(0) rotate(-2deg)"},{transform:"translateY(.7px) rotate(-2.4deg)"},{transform:"translateY(0) rotate(-2deg)"}],{duration:240,easing:"ease-out",composite:"replace"}); }
+function showNote(){
+  N(".note-g").animate([{opacity:0,transform:"translateY(26px) rotate(8deg)"},{opacity:1,transform:"translateY(-2px) rotate(-3deg)",offset:.7},{opacity:1,transform:"translateY(0) rotate(-2deg)"}],{duration:520,easing:"cubic-bezier(.2,.9,.3,1.2)",fill:"forwards"});
+  fade(N(".arm-hold"),1,200,250);
+}
+function hideNote(){
+  N(".note-g").animate([{opacity:1,transform:"translateY(0) rotate(-2deg)"},{opacity:0,transform:"translateY(26px) rotate(6deg)"}],{duration:380,easing:"ease-in",fill:"forwards"});
+  [".arm-hold",".arm-write",".arm-chin",".pencil"].forEach(q=>fade(N(q),0,180));
+}
+function writing(on){ fade(N(".arm-write"),on?1:0,160); fade(N(".pencil"),on?1:0,160); fade(N(".arm-chin"),on?0:1,160); }
+/* שורה אחת: העיפרון זז מצד לצד מעל הדף, עם רעד קטן של כתיבה, והעיניים עוקבות אחריו */
+function writeLine(ms,e){
+  return new Promise(res=>{const t0=performance.now(), startH=paperH; let lastNudge=-1;
+    const step=(t)=>{ if(e!==epoch) return res(); const k=Math.min(1,(t-t0)/ms);
+      const x=56-15*k;                         // בעברית כותבים מימין לשמאל
+      placePencil(x, 141.4+Math.abs(Math.sin(k*30))*.9, -12+Math.sin(k*30)*6);
+      look((x-49)/3.2, 3.6, 160);
+      setPaper(Math.min(32, startH+4*k));
+      if(Math.floor(k*4)!==lastNudge){ lastNudge=Math.floor(k*4); nudgeNote(); }
+      k<1 ? requestAnimationFrame(step) : res(); };
+    requestAnimationFrame(step);});
+}
+async function think(e){                       // יד לסנטר, מבט למעלה
+  writing(false); look(3,-4,320); pose({look:[3,-4],mouth:"smirk"}); await sleep(950); if(e!==epoch) return;
+  writing(true); pose({look:[0,3.6],mouth:"focus"}); look(2,3.6,280); await sleep(250);
+}
+async function noteLoop(e){
+  fade(N(".arm-chin"),1,160); pose({look:[3,-4],mouth:"smirk"}); look(3,-4,320); await sleep(800); if(e!==epoch) return;
+  setPaper(12); placePencil(56,141.4,-12); showNote(); await sleep(380); if(e!==epoch) return;
+  writing(true); pose({look:[2,3.6],mouth:"focus"}); look(2,3.6,280); await sleep(280);
+  let n=0;
+  while(e===epoch){
+    await writeLine(1100,e); if(e!==epoch) break;
+    n++;
+    if(paperH>=31){ await sleep(200); await rollUp(); }  // הדף מתגלגל חזרה, ומתחילים מחדש
+    if(n%2===0){ await think(e); }
+    else { look(2,3.8,260); nod(.8,260); await sleep(260); }  // חוזרת לתחילת השורה, בעדינות
+  }
+}
+const listenStyles=[
+  ["פתק","note",noteLoop],
+  ["עיניים למטה","down",async(e)=>{ pose({look:[0,4],mouth:"soft"}); let d=3; while(e===epoch){ tilt(d,900); await sleep(1400); if(e!==epoch)break; blink(); d=-d; } }],
+  ["עיניים עצומות","closed",async(e)=>{ pose({mouth:"smile"}); let d=4; while(e===epoch){ tilt(d,1100); await sleep(1100); if(e!==epoch)break; nod(1,300); d=-d; } }],
+  ["אוזן קשבת","ear",async(e)=>{ pose({look:[5,-2],mouth:"o"}); tilt(5,500); while(e===epoch){ await sleep(2200); if(e!==epoch)break; blink(); } }],
+  ["משתוקקת","eager",async(e)=>{ pose({mouth:"ooh",wide:1.15}); while(e===epoch){ nod(-1.2,260); await sleep(700); if(e!==epoch)break; if(Math.random()<.35) blink(); } }],
+  ["כותבת","write",async(e)=>{ pose({look:[-4,3],mouth:"focus"}); await sleep(300); while(e===epoch){ pupils().forEach(p=>p.style.transition="transform 1.6s linear"); pose({look:[4,3],mouth:"focus"}); await sleep(1600); if(e!==epoch)break; pupils().forEach(p=>p.style.transition="transform .14s ease-out"); pose({look:[-4,4],mouth:"focus"}); nod(); await sleep(380);} pupils().forEach(p=>p.style.transition=""); }],
+  ["עיניים מחייכות","smiley",async(e)=>{ pose({look:[0,-1],mouth:"grin"}); while(e===epoch){ nod(1.2,320); await sleep(520); if(e!==epoch)break; nod(1.2,320); await sleep(1300); } }]];
+let styleI=0;
+function startListen(){
+  mode="listening"; epoch++;
+  closeBubble(); setTimeout(()=>G.querySelectorAll(".think").forEach(t=>t.remove()),420);
+  const [,cls,run]=listenStyles[styleI];
+  const sc=$(".gscroll"); sc.scrollTo({top:0,behavior:"smooth"});
+  G.classList.add("listening","focus","st-"+cls); squish(); setLine("אני מקשיבה…");
+  run(epoch);
+}
+async function stopListen(){
+  const wasNote=G.classList.contains("st-note");
+  epoch++; mode="ending"; if(wasNote) hideNote();
+  G.className="phone g"; pupils().forEach(p=>p.style.transition="");
+  G.classList.add("focus"); tilt(0,250); squish(); pose({mouth:"grin",wide:1.1}); setLine("איזה רעיון!");
+  setTimeout(()=>G.classList.remove("focus"),1100);
+  await sleep(250); blink(); await sleep(900); pose(); mode="idle";
+}
+const toggle=()=> mode==="listening" ? stopListen() : mode==="idle" && startListen();
+$(".gface").addEventListener("click",toggle); $(".dome").addEventListener("click",toggle);
+
+const pick=document.getElementById("listenPick");
+pick.innerHTML=listenStyles.map(([n],i)=>`<button type="button" data-i="${i}" aria-pressed="${i===0}">${n}</button>`).join("");
+pick.addEventListener("click",async(ev)=>{const b=ev.target.closest("button"); if(!b) return;
+  styleI=+b.dataset.i; pick.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+  if(mode==="listening"){ if(G.classList.contains("st-note")) hideNote(); epoch++; G.className="phone g focus"; tilt(0,200); pupils().forEach(p=>p.style.transition=""); mode="idle"; startListen(); } else if(mode==="idle") startListen(); });
+thinkLoop();
+</script>
+</body></html>
