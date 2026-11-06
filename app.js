@@ -11,7 +11,7 @@ const cancelBtn = document.getElementById("cancel-btn");
 const note = document.getElementById("note");
 
 const SAMPLE_NOTE = "בינתיים נפתח סיפור לדוגמה. יצירת סיפורים תחובר בקרוב.";
-const WAIT_STATUS = "הירח כותב סיפור…";
+const WAIT_STATUS = "";
 const PAGE_COUNT = 12;
 /* כל חלק עובר עריכה וניקוד לבד. העמוד הראשון לבד, כדי שהספר ייפתח מהר,
    ואחריו זוגות שמתאימים לכפולות בספר */
@@ -135,7 +135,7 @@ async function finishPart(part, signal) {
 function setWaiting(on) {
   home.classList.toggle("waiting", on);
   cancelBtn.hidden = !on;
-  moon.classList.toggle("happy", on);
+  setKoala(on ? "writing" : "idle", on ? "אני כותבת לך סיפור…" : undefined);
 }
 
 /* הסיפור נכתב בזרם. כל חלק שמגיע נערך ומנוקד, לפי הסדר,
@@ -261,7 +261,7 @@ function closeBook() {
   narration.stop();
   reader.hidden = true;
   home.hidden = false;
-  document.getElementById("theme-color").content = "#2bb3ff";
+  document.getElementById("theme-color").content = "#ffeec4";
   document.documentElement.classList.remove("reading");
   cancelTurn();
 }
@@ -386,6 +386,14 @@ function sortedStories() {
   return stories.sort((a, b) => b.created - a.created);
 }
 
+/* לכל סיפור צבע כריכה קבוע משלו, לפי המזהה שלו */
+const ART_COLORS = ["#6fcf9b", "#ffc94d", "#f5a623", "#5cc0f5", "#4fd1a5", "#ff7b54", "#f48fb1", "#9fa8ff"];
+function artColor(key) {
+  let hash = 0;
+  for (const ch of String(key)) hash = (hash * 31 + ch.codePointAt(0)) >>> 0;
+  return ART_COLORS[hash % ART_COLORS.length];
+}
+
 function renderLibrary() {
   const stories = sortedStories();
   library.hidden = stories.length === 0;
@@ -400,6 +408,7 @@ function renderLibrary() {
       button.type = "button";
       button.className = "story-item";
       button.dataset.id = story.id;
+      button.style.setProperty("--art", artColor(story.id || story.title));
       if (shelf.selecting) button.setAttribute("aria-pressed", String(shelf.selected.has(story.id)));
       const emoji = document.createElement("span");
       emoji.className = "story-emoji";
@@ -565,132 +574,224 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && reader.hidden) syncShelf();
 });
 
-/* הירח: ממצמץ, מביט באצבע, ומסתכל על הדף ושמח כשכותבים */
-
-const moon = document.getElementById("moon");
-const moonHop = document.getElementById("moon-hop");
-const pupils = [...moon.querySelectorAll(".pupil")];
+/* הדמות: ציור חי שהאפליקציה מזיזה בין מצבים (buddy.js) */
 const stillMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-let smileTimer;
-let glanceTimer;
-let lastHop = 0;
 
-function lookAt(x, y) {
-  pupils.forEach((pupil) => {
-    pupil.style.transform = `translate(${x}px, ${y}px)`;
-  });
-}
+/* השיחה עם הקואלה. נוגעים בה, והיא מקשיבה ורושמת. הקלטה נעצרת לבד אחרי שתיקה,
+   הקואלה חוזרת על מה ששמעה ומחכה לתשובה בבועות: אגודל ירוק והיא כותבת את הסיפור,
+   אגודל אדום והיא מנענעת את הראש ומקשיבה שוב. בלי מיקרופון, מקלידים בתיבה */
 
-function lookToward(clientX, clientY) {
-  const box = moon.getBoundingClientRect();
-  const dx = clientX - (box.left + box.width / 2);
-  const dy = clientY - (box.top + box.height * 0.38);
-  const span = Math.hypot(dx, dy) || 1;
-  const reach = Math.min(1, span / 120) * 8;
-  lookAt((dx / span) * reach, (dy / span) * reach);
-}
-
-function blink() {
-  if (home.hidden || stillMotion.matches) return;
-  moon.classList.add("blink");
-  setTimeout(() => moon.classList.remove("blink"), 130);
-}
-
-function scheduleBlink() {
-  setTimeout(() => {
-    blink();
-    scheduleBlink();
-  }, 2400 + Math.random() * 3400);
-}
-
-function scheduleGlance() {
-  clearTimeout(glanceTimer);
-  glanceTimer = setTimeout(() => {
-    if (!home.hidden && !stillMotion.matches && document.activeElement !== topicInput) {
-      lookAt((Math.random() - 0.5) * 14, (Math.random() - 0.5) * 8);
-    }
-    scheduleGlance();
-  }, 2800 + Math.random() * 2600);
-}
-
-function cheer() {
-  moon.classList.add("happy");
-  clearTimeout(smileTimer);
-  smileTimer = setTimeout(() => moon.classList.remove("happy"), 1100);
-  const now = performance.now();
-  if (stillMotion.matches || now - lastHop < 320) return;
-  lastHop = now;
-  moonHop.animate(
-    [{ transform: "translateY(0)" }, { transform: "translateY(-16px)" }, { transform: "translateY(0)" }],
-    { duration: 300, easing: "ease-out" },
-  );
-}
-
-topicInput.addEventListener("focus", () => lookAt(0, 8));
-topicInput.addEventListener("input", () => {
-  lookAt(0, 8);
-  cheer();
-});
-
-/* הכתבה: הילדה מספרת לירח על מה הסיפור. לוחצים ומחזיקים ומדברים, או נוגעים פעם אחת
-   כדי להתחיל ופעם נוספת כדי לסיים. הטקסט נכנס לתיבה, והירח מקריא אותו בחזרה לאישור */
-
-const micBtn = document.getElementById("mic-btn");
+const koalaStage = document.getElementById("koala-stage");
+const homeScroll = document.getElementById("home-scroll");
+const koalaBtn = document.getElementById("koala-btn");
 const micLabel = document.getElementById("mic-label");
+const heard = document.getElementById("heard");
+const yesBtn = document.getElementById("yes-btn");
+const noBtn = document.getElementById("no-btn");
+const typeUi = document.getElementById("type-ui");
+
 const MAX_RECORDING_MS = 30_000;
+const SILENCE_MS = 2000; // שתיקה אחרי דיבור שמסיימת את ההקלטה
+const NO_SPEECH_MS = 7000; // אם לא נשמע כלום, מוותרים
 const TAP_MS = 450;
-const dictation = { recorder: null, stream: null, chunks: [], pressedAt: 0, timer: null, busy: false, starting: false };
-const readBack = new Audio();
+const STREAM_IDLE_MS = 60_000; // המיקרופון נסגר אם לא משתמשים בו
+const SHAKE_MS = 700;
+
+const READ_BACK = (text) => `רצית סיפור על ${text}?`;
+const ASK_AGAIN = "אוי, לא הבנתי. ספרו לי שוב, לאט ובקול ברור.";
+const LABELS = {
+  idle: "",
+  listening: "אני מקשיבה…",
+  thinking: "רגע, אני רושמת…",
+  asking: "",
+  shaking: "אוי, לא הבנתי. ספרי לי שוב",
+  writing: "",
+};
+/* משפט קטן מעל השם, שמתחלף כשהדמות מחכה */
+const IDLE_LINES = ["אז מה ניצור היום?", "על מה נחלום הלילה?", "יש לך רעיון לסיפור?", "ספרי לי על מה הסיפור"];
+let idleLine = 0;
+let lineLocked = false;
+const NOT_HEARD = "לא שמעתי. געו בי ונסו שוב.";
+
+const dictation = {
+  stream: null,
+  context: null,
+  recorder: null,
+  chunks: [],
+  watcher: null,
+  pressedAt: 0,
+  starting: false,
+  busy: false,
+  idleTimer: null,
+  text: "",
+};
+const koalaVoice = new Audio();
 
 const canRecord = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && window.STORY_API_URL);
-micBtn.hidden = !canRecord;
+typeUi.hidden = canRecord;
+
+/* מצב הקואלה: התנועה, הבועות והמשפט שמתחתיה */
+function setLine(text) {
+  if (micLabel.textContent === text) return;
+  micLabel.classList.add("out");
+  setTimeout(() => {
+    micLabel.textContent = text;
+    micLabel.classList.remove("out");
+  }, 250);
+}
+
+function setKoala(state, label) {
+  koalaStage.dataset.state = state;
+  const confirming = state === "asking" && !!dictation.text && dictation.confirm;
+  yesBtn.hidden = !confirming;
+  noBtn.hidden = !confirming;
+  koalaBtn.disabled = state === "thinking" || state === "shaking" || state === "writing";
+  heard.textContent = dictation.text;
+  /* בכל מצב חוץ ממנוחה מתקרבים לדמות, והספרייה יוצאת מהפריים */
+  const focus = state !== "idle";
+  if (focus && !home.classList.contains("focus")) homeScroll.scrollTo({ top: 0, behavior: "smooth" });
+  home.classList.toggle("focus", focus);
+  window.Buddy?.set(state);
+  const text = label ?? (state === "asking" && dictation.text ? READ_BACK(dictation.text) : LABELS[state]);
+  lineLocked = !!text;
+  setLine(text || IDLE_LINES[idleLine]);
+}
+
+setInterval(() => {
+  if (lineLocked || koalaStage.dataset.state !== "idle" || stillMotion.matches) return;
+  idleLine = (idleLine + 1) % IDLE_LINES.length;
+  setLine(IDLE_LINES[idleLine]);
+}, 4000);
 
 function recordingType() {
   const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
   return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
 }
 
-function setMic(state) {
-  micBtn.classList.toggle("recording", state === "recording");
-  micBtn.classList.toggle("busy", state === "busy");
-  micLabel.textContent = state === "recording" ? "הירח מקשיב…" : state === "busy" ? "רגע…" : "ספרו לירח";
-  moon.classList.toggle("happy", state !== "idle");
-}
-
-async function startRecording() {
-  if (dictation.recorder || dictation.busy || dictation.starting) return;
-  dictation.starting = true;
-  readBack.pause();
-  /* נגינה קצרה בזמן הלחיצה מאשרת לדפדפן להשמיע אחר כך את הקול של הירח */
-  readBack.src = SILENCE;
-  readBack.play().catch(() => {});
+/* המיקרופון נשאר פתוח לאורך כל השיחה עם הקואלה, כדי שאפשר יהיה להקשיב שוב בלי נגיעה */
+async function openMicrophone() {
+  clearTimeout(dictation.idleTimer);
+  if (dictation.stream?.active) return true;
   try {
-    dictation.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    dictation.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true },
+    });
   } catch (error) {
     console.error("microphone", error);
-    note.textContent = "צריך לאשר גישה למיקרופון כדי לספר לירח.";
+    note.textContent = "צריך לאשר גישה למיקרופון כדי לספר לי על הסיפור.";
+    return false;
+  }
+  return true;
+}
+
+function closeMicrophoneLater() {
+  clearTimeout(dictation.idleTimer);
+  dictation.idleTimer = setTimeout(closeMicrophone, STREAM_IDLE_MS);
+}
+
+function closeMicrophone() {
+  clearTimeout(dictation.idleTimer);
+  dictation.stream?.getTracks().forEach((track) => track.stop());
+  dictation.stream = null;
+}
+
+/* מאזין לעוצמת הקול: הקואלה גדלה קצת עם הקול, וההקלטה נעצרת אחרי שתיקה */
+function watchSilence(onEnd) {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return () => {};
+  dictation.context ||= new AudioContextClass();
+  dictation.context.resume().catch(() => {});
+  const source = dictation.context.createMediaStreamSource(dictation.stream);
+  const analyser = dictation.context.createAnalyser();
+  analyser.fftSize = 1024;
+  source.connect(analyser);
+  const samples = new Float32Array(analyser.fftSize);
+  const started = performance.now();
+  let noise = 0;
+  let spoke = false;
+  let lastSound = started;
+  const timer = setInterval(() => {
+    analyser.getFloatTimeDomainData(samples);
+    let sum = 0;
+    for (const sample of samples) sum += sample * sample;
+    const level = Math.sqrt(sum / samples.length);
+    const now = performance.now();
+    if (now - started < 300) {
+      noise = Math.max(noise, level);
+      return;
+    }
+    const threshold = Math.max(0.02, noise * 2.5);
+    if (level > threshold) {
+      spoke = true;
+      lastSound = now;
+    }
+    koalaStage.style.setProperty("--level", Math.min(1, level / 0.15).toFixed(2));
+    if (spoke && now - lastSound > SILENCE_MS) onEnd("silence");
+    else if (!spoke && now - started > NO_SPEECH_MS) onEnd("nothing");
+  }, 60);
+  return () => {
+    clearInterval(timer);
+    source.disconnect();
+  };
+}
+
+async function startListening() {
+  if (dictation.recorder || dictation.starting || dictation.busy) return;
+  dictation.starting = true;
+  koalaVoice.pause();
+  /* נגינה קצרה בזמן הנגיעה מאשרת לדפדפן להשמיע אחר כך את הקול של הקואלה */
+  if (!dictation.unlocked) {
+    dictation.unlocked = true;
+    koalaVoice.src = SILENCE;
+    koalaVoice.play().catch(() => {});
+  }
+  const ready = await openMicrophone();
+  dictation.starting = false;
+  if (!ready) {
+    setKoala("idle", "");
     return;
-  } finally {
-    dictation.starting = false;
   }
   const type = recordingType();
   const recorder = new MediaRecorder(dictation.stream, type ? { mimeType: type } : undefined);
   dictation.recorder = recorder;
   dictation.chunks = [];
+  let reason = "manual";
   recorder.ondataavailable = (event) => {
     if (event.data.size) dictation.chunks.push(event.data);
   };
-  recorder.onstop = () => finishRecording(recorder.mimeType || type);
+  recorder.onstop = () => {
+    dictation.watcher?.();
+    dictation.watcher = null;
+    dictation.recorder = null;
+    finishListening(recorder.mimeType || type, reason);
+  };
+  const stop = (why) => {
+    reason = why;
+    stopListening();
+  };
+  dictation.watcher = watchSilence(stop);
+  dictation.maxTimer = setTimeout(() => stop("limit"), MAX_RECORDING_MS);
   recorder.start();
-  dictation.timer = setTimeout(stopRecording, MAX_RECORDING_MS);
   note.textContent = "";
-  setMic("recording");
-  lookAt(0, 8);
+  dictation.text = "";
+  dictation.confirm = false;
+  setKoala("listening");
 }
 
-function stopRecording() {
-  clearTimeout(dictation.timer);
+function stopListening() {
+  clearTimeout(dictation.maxTimer);
   if (dictation.recorder?.state === "recording") dictation.recorder.stop();
+}
+
+function cancelDictation() {
+  if (dictation.recorder) {
+    dictation.cancelled = true;
+    stopListening();
+  }
+  koalaVoice.pause();
+  closeMicrophone();
+  dictation.text = "";
+  if (!home.classList.contains("waiting")) setKoala("idle");
 }
 
 function toBase64(blob) {
@@ -702,19 +803,20 @@ function toBase64(blob) {
   });
 }
 
-async function finishRecording(type) {
-  dictation.stream?.getTracks().forEach((track) => track.stop());
-  dictation.stream = null;
-  dictation.recorder = null;
+async function finishListening(type, reason) {
   const blob = new Blob(dictation.chunks, { type });
   dictation.chunks = [];
-  if (blob.size < 1000) {
-    setMic("idle");
-    note.textContent = "לא שמעתי. לחצו והחזיקו, ודברו.";
+  if (dictation.cancelled) {
+    dictation.cancelled = false;
+    return;
+  }
+  if (reason === "nothing" || blob.size < 1000) {
+    closeMicrophoneLater();
+    setKoala("idle", NOT_HEARD);
     return;
   }
   dictation.busy = true;
-  setMic("busy");
+  setKoala("thinking");
   try {
     const response = await fetch(window.STORY_API_URL, {
       method: "POST",
@@ -725,73 +827,101 @@ async function finishRecording(type) {
     if (data.error) throw new Error(data.error);
     const text = (data.text || "").trim();
     if (!text) {
-      note.textContent = "לא שמעתי. נסו שוב.";
+      closeMicrophoneLater();
+      setKoala("idle", NOT_HEARD);
       return;
     }
+    dictation.text = text;
     topicInput.value = text;
-    topicInput.dispatchEvent(new Event("input"));
-    note.textContent = "";
-    speakBack(text);
+    try {
+      localStorage.setItem(DRAFT_KEY, text);
+    } catch {}
+    /* הקואלה שואלת, ורק אחרי שסיימה לשאול הבועות מופיעות */
+    setKoala("asking");
+    await koalaSays(READ_BACK(text));
+    if (dictation.text !== text) return;
+    dictation.confirm = true;
+    setKoala("asking");
+    closeMicrophoneLater();
   } catch (error) {
     console.error("dictation", error);
-    note.textContent = "לא הצלחתי לשמוע. נסו שוב.";
+    closeMicrophoneLater();
+    setKoala("idle", "לא הצלחתי לשמוע. געו בי ונסו שוב.");
   } finally {
     dictation.busy = false;
-    setMic("idle");
   }
 }
 
-/* הירח חוזר על הרעיון, כדי שהילדה תדע שהבין אותה */
-async function speakBack(text) {
+/* הקואלה מדברת, ומחכים עד שסיימה. אם הקול לא נטען, ממשיכים בלי לחכות */
+async function koalaSays(text) {
   try {
-    const url = await window.fetchSpeech(`רצית סיפור על ${text}?`, window.narrationSettings());
-    readBack.src = url;
-    await readBack.play();
+    const url = await window.fetchSpeech(text, window.narrationSettings());
+    koalaVoice.src = url;
+    await new Promise((resolve) => {
+      koalaVoice.onended = koalaVoice.onerror = resolve;
+      koalaVoice.play().catch(resolve);
+    });
   } catch (error) {
-    console.error("read back", error);
+    console.error("koala voice", error);
   }
 }
 
-micBtn.addEventListener("contextmenu", (event) => event.preventDefault());
+yesBtn.addEventListener("click", () => {
+  koalaVoice.pause();
+  const topic = dictation.text;
+  dictation.text = "";
+  dictation.confirm = false;
+  closeMicrophone();
+  if (topic) createStory(topic);
+});
 
-micBtn.addEventListener("pointerdown", (event) => {
+noBtn.addEventListener("click", async () => {
+  koalaVoice.pause();
+  dictation.text = "";
+  dictation.confirm = false;
+  setKoala("shaking");
+  await Promise.all([koalaSays(ASK_AGAIN), new Promise((resolve) => setTimeout(resolve, SHAKE_MS))]);
+  if (koalaStage.dataset.state === "shaking") startListening();
+});
+
+koalaBtn.addEventListener("contextmenu", (event) => event.preventDefault());
+
+koalaBtn.addEventListener("pointerdown", (event) => {
   event.preventDefault();
+  if (koalaBtn.disabled || home.classList.contains("waiting")) return;
+  if (!canRecord) {
+    topicInput.focus();
+    return;
+  }
   if (dictation.recorder) {
-    stopRecording();
+    stopListening();
     return;
   }
   dictation.pressedAt = performance.now();
-  micBtn.setPointerCapture(event.pointerId);
-  startRecording();
+  window.Buddy?.squish();
+  koalaBtn.setPointerCapture(event.pointerId);
+  startListening();
 });
 
-/* שחרור אחרי לחיצה ארוכה מסיים את ההקלטה. נגיעה קצרה משאירה אותה פתוחה עד הנגיעה הבאה */
-micBtn.addEventListener("pointerup", () => {
-  if (dictation.recorder && performance.now() - dictation.pressedAt > TAP_MS) stopRecording();
+/* מי שמחזיקה ומשחררת מסיימת את ההקלטה. נגיעה קצרה משאירה אותה פתוחה עד שתיקה או נגיעה נוספת */
+koalaBtn.addEventListener("pointerup", () => {
+  if (dictation.recorder && performance.now() - dictation.pressedAt > TAP_MS) stopListening();
 });
 
-micBtn.addEventListener("pointercancel", stopRecording);
-
-micBtn.addEventListener("keydown", (event) => {
+koalaBtn.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" && event.key !== " ") return;
   event.preventDefault();
-  if (dictation.recorder) stopRecording();
-  else startRecording();
+  if (dictation.recorder) stopListening();
+  else startListening();
 });
 
-home.addEventListener("pointermove", (event) => {
-  if (document.activeElement === topicInput) return;
-  lookToward(event.clientX, event.clientY);
-  scheduleGlance();
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") cancelDictation();
 });
 
-home.addEventListener("pointerdown", (event) => {
-  lookToward(event.clientX, event.clientY);
-  scheduleGlance();
-});
+window.Buddy?.mount(koalaStage);
+setKoala("idle");
 
-scheduleBlink();
-scheduleGlance();
 
 /* פריסה: אייפד בכפולה, טלפון בעמוד אחד */
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Story Time</title>
-  <meta id="theme-color" name="theme-color" content="#2bb3ff">
+  <meta id="theme-color" name="theme-color" content="#ffeec4">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Story Time">
@@ -19,61 +19,35 @@
 </head>
 <body>
   <main id="home" class="home">
-    <h1 class="logo" dir="ltr">Story Time</h1>
+    <div id="home-scroll" class="home-scroll">
+      <div class="home-col">
+        <!-- הדמות היא הממשק: נוגעים בה כדי לספר, והיא מקשיבה, כותבת בפתק ומחכה לתשובה בבועות -->
+        <form id="topic-form" class="topic-form home-stage">
+          <h1 class="logo" dir="ltr">Story Time</h1>
+          <div class="hello">
+            <span id="mic-label" class="mic-label">אז מה ניצור היום?</span>
+            <span id="child-name" class="child-name">מיה</span>
+          </div>
 
-    <form id="topic-form" class="topic-form">
-      <div class="moon-rise">
-        <div id="moon-hop" class="moon-hop">
-          <svg id="moon" class="moon" viewBox="0 0 400 400" aria-hidden="true">
-            <circle cx="200" cy="200" r="196" fill="#ffd21f"/>
-            <circle cx="72" cy="128" r="26" fill="#f5bd00"/>
-            <circle cx="108" cy="64" r="13" fill="#f5bd00"/>
-            <circle cx="322" cy="96" r="20" fill="#f5bd00"/>
-            <circle cx="344" cy="170" r="11" fill="#f5bd00"/>
-            <ellipse cx="98" cy="196" rx="30" ry="19" fill="#ff9ec7"/>
-            <ellipse cx="302" cy="196" rx="30" ry="19" fill="#ff9ec7"/>
-            <path class="brow" d="M122 104q24-16 48-4" fill="none" stroke="#14213d" stroke-width="10" stroke-linecap="round"/>
-            <path class="brow" d="M230 100q24-12 48 4" fill="none" stroke="#14213d" stroke-width="10" stroke-linecap="round"/>
-            <g class="eye"><g class="pupil">
-              <circle cx="146" cy="150" r="24" fill="#14213d"/>
-              <circle cx="155" cy="141" r="7.5" fill="#fff"/>
-            </g></g>
-            <g class="eye"><g class="pupil">
-              <circle cx="254" cy="150" r="24" fill="#14213d"/>
-              <circle cx="263" cy="141" r="7.5" fill="#fff"/>
-            </g></g>
-            <path class="smile smile-soft" d="M168 202q32 26 64 0" fill="none" stroke="#14213d" stroke-width="10" stroke-linecap="round"/>
-            <path class="smile smile-wide" d="M152 196q48 52 96 0Z" fill="#14213d" stroke="#14213d" stroke-width="8" stroke-linejoin="round"/>
-          </svg>
-        </div>
-      </div>
+          <div id="koala-stage" class="buddy" data-state="idle"></div>
+          <button id="koala-btn" class="buddy-btn" type="button" aria-label="ספרי לי על מה הסיפור"></button>
 
-      <div class="page-card">
-        <svg class="hand hand-a" viewBox="0 0 80 56" aria-hidden="true">
-          <rect x="2" y="2" width="76" height="52" rx="26" fill="#ffd21f"/>
-          <path d="M28 30v14M52 30v14" stroke="#f5bd00" stroke-width="6" stroke-linecap="round"/>
-        </svg>
-        <svg class="hand hand-b" viewBox="0 0 80 56" aria-hidden="true">
-          <rect x="2" y="2" width="76" height="52" rx="26" fill="#ffd21f"/>
-          <path d="M28 30v14M52 30v14" stroke="#f5bd00" stroke-width="6" stroke-linecap="round"/>
-        </svg>
-        <label for="topic">על מה הסיפור?</label>
-        <textarea id="topic" rows="3" placeholder="חיידק שגדל בתוך הפה…" autocomplete="off"></textarea>
-      </div>
+          <button id="yes-btn" class="answer answer-yes" type="button" hidden aria-label="כן, זה הסיפור"><span aria-hidden="true">👍</span></button>
+          <button id="no-btn" class="answer answer-no" type="button" hidden aria-label="לא, אגיד שוב"><span aria-hidden="true">👎</span></button>
 
-      <button id="mic-btn" class="mic-btn" type="button" hidden aria-label="לחצו ודברו כדי לספר על מה הסיפור">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="8.5" y="3" width="7" height="12" rx="3.5" fill="currentColor"/>
-          <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <span id="mic-label">ספרו לירח</span>
-      </button>
-      <button id="create-btn" type="submit">צרו סיפור</button>
-      <p id="note" class="note" role="status"></p>
-      <button id="cancel-btn" class="ghost" type="button" hidden>ביטול</button>
-    </form>
+          <p id="heard" class="heard" hidden></p>
+          <p id="note" class="note" role="status"></p>
+          <button id="cancel-btn" class="ghost cancel-btn" type="button" hidden>ביטול</button>
 
-    <section id="library" class="library" hidden aria-labelledby="library-title">
+          <!-- הקלדה: רק במכשיר שאין בו מיקרופון -->
+          <div id="type-ui" class="type-ui" hidden>
+            <label for="topic">על מה הסיפור?</label>
+            <textarea id="topic" rows="2" placeholder="חיידק שגדל בתוך הפה…" autocomplete="off"></textarea>
+            <button id="create-btn" type="submit">צרו סיפור</button>
+          </div>
+        </form>
+
+    <section id="library" class="library glib" hidden aria-labelledby="library-title">
       <div class="library-bar">
         <h2 id="library-title">הסיפורים שלי</h2>
         <button id="select-btn" class="tool" type="button" aria-pressed="false">בחירה</button>
@@ -96,6 +70,8 @@
         <p id="link-note" class="link-note" role="status"></p>
       </div>
     </section>
+      </div>
+    </div>
 
     <div id="select-bar" class="select-bar" hidden>
       <span id="select-count" class="select-count" role="status"></span>
@@ -120,6 +96,7 @@
   <script src="config.js"></script>
   <script src="story.js"></script>
   <script src="narration.js"></script>
+  <script src="buddy.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

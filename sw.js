@@ -1,10 +1,11 @@
-const CACHE = "story-time-v17";
+const CACHE = "story-time-v21";
 const SHELL = [
   "./",
   "index.html",
   "styles.css",
   "app.js",
   "narration.js",
+  "buddy.js",
   "voice-lab.html",
   "config.js",
   "story.js",
@@ -37,6 +38,8 @@ self.addEventListener("fetch", (event) => {
   const sameOrigin = url.origin === self.location.origin;
   const isFont = url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com";
   if (!sameOrigin && !isFont) return;
+  // סרטונים נטענים בחלקים (Range), וזה לא עובד דרך המטמון. הדפדפן מטפל בהם בעצמו
+  if (/\.(webm|mov|mp4)$/.test(url.pathname)) return;
   // כל קובץ נבדק מול השרת, כדי שקבצים ישנים מהמטמון של הדפדפן לא יתערבבו עם חדשים
   const fresh = sameOrigin ? fetch(event.request.url, { cache: "no-cache" }) : fetch(event.request);
   event.respondWith(
