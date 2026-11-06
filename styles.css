@@ -19,7 +19,7 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: var(--cream);
+  background: linear-gradient(var(--cream) 0 70%, var(--lilac) 70%) fixed;
   color: var(--ink);
   font-family: var(--font);
   overscroll-behavior: none;
@@ -32,10 +32,17 @@ html.reading, html.reading body { background: var(--paper); }
 
 /* דף הפתיחה: למעלה קרם עם השם שלה, ומלמטה עולה הדמות בלילך. הספרייה ממשיכה על הגוף שלה.
    כל המידות ביחידות cqw של העמודה, כך שהציור נראה אותו דבר בכל רוחב */
+/* הרקע עצמו לילך מהגובה שבו הגוף כבר רחב כמו המסך, כדי שלא תיראה רצועת קרם מתחת לדמות
+   בשום דפדפן (גם כשספארי מחשב גובה אחר לסרגלים שלו) */
 .home {
   height: 100dvh;
-  background: var(--cream);
+  background: linear-gradient(var(--cream) 0 88%, var(--lilac) 88%);
   color: var(--plum);
+}
+
+/* בטלפון הגוף רחב כמו המסך כבר מ-60% מהגובה, אז אפשר להתחיל את הלילך גבוה יותר */
+@media (max-width: 640px) {
+  .home { background: linear-gradient(var(--cream) 0 70%, var(--lilac) 70%); }
 }
 
 .home-scroll {
@@ -57,6 +64,7 @@ html.reading, html.reading body { background: var(--paper); }
   margin: 0 auto;
   padding-top: env(safe-area-inset-top);
   container-type: inline-size;
+  background: linear-gradient(transparent 0 128cqw, var(--lilac) 128cqw);
   transform-origin: 50% 112cqw;
   transition: transform 700ms cubic-bezier(0.3, 0.8, 0.25, 1);
 }
