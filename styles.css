@@ -27,10 +27,12 @@ html, body {
   -webkit-text-size-adjust: 100%;
 }
 
-/* באפליקציה ממסך הבית iOS מקצר את אזור הדף בגובה שורת השעה, ובפער שנשאר למטה הוא מצייר את צבע הרקע.
-   שם הרקע לילך, כמו הגוף של הדמות. למעלה הדף עצמו מצויר מתחת לשעה, אז הקרם נשאר */
+/* באפליקציה ממסך הבית iOS מקצר את אזור הדף בגובה שורת השעה ומשאיר פער למטה. הרקע נשאר קרם,
+   כי לפיו iOS צובע את האזור המטושטש מאחורי השעה. במקום זה דף הבית יורד אל תוך הפער,
+   בשוליים קצת גדולים מגובה שורת השעה, והספרייה מקבלת ריווח תואם בסוף */
 @media (display-mode: standalone) {
-  html, body { background-color: var(--lilac); }
+  .home { bottom: calc(-1 * (env(safe-area-inset-top, 0px) + 16px)); }
+  .library { padding-bottom: calc(10cqw + env(safe-area-inset-bottom) + env(safe-area-inset-top, 0px) + 16px); }
 }
 
 html.reading, html.reading body { background: var(--paper); }
