@@ -29,6 +29,10 @@ html, body {
 
 html.reading, html.reading body { background: var(--paper); }
 
+/* דף הבית גבוה מהחלק הגלוי כשסרגלי ספארי פתוחים, אז העמוד עצמו לא נגלל. גוללים רק בתוך הדף */
+html:not(.reading),
+html:not(.reading) body { overflow: hidden; }
+
 /* ספארי צובע את סרגל השעה ואת סרגל הכתובת לפי אלמנטים קבועים בקצוות המסך.
    פס דק בצבע הקרם למעלה ופס בצבע הלילך למטה, כדי שהסרגלים ימשיכו את הדף ולא יהיו לבנים */
 body::before,
@@ -53,8 +57,10 @@ html.reading body::after { display: none; }
    כל המידות ביחידות cqw של העמודה, כך שהציור נראה אותו דבר בכל רוחב */
 /* הרקע עצמו לילך מהגובה שבו הגוף כבר רחב כמו המסך, כדי שלא תיראה רצועת קרם מתחת לדמות
    בשום דפדפן (גם כשספארי מחשב גובה אחר לסרגלים שלו) */
+/* גובה המסך המלא, כולל האזור שמתחת לסרגל הכתובת של ספארי: הגוף ממשיך מאחורי הסרגל השקוף */
 .home {
   height: 100dvh;
+  height: 100lvh;
   background: linear-gradient(var(--cream) 0 88%, var(--lilac) 88%);
   color: var(--plum);
 }
@@ -382,7 +388,7 @@ html.reading body::after { display: none; }
   position: relative;
   flex: 1;
   margin-top: -1px;
-  padding: 5cqw 5cqw calc(10cqw + env(safe-area-inset-bottom));
+  padding: 5cqw 5cqw calc(10cqw + env(safe-area-inset-bottom) + (100lvh - 100dvh));
   background: var(--lilac);
   box-shadow: 0 0 0 100vmax var(--lilac);
   clip-path: inset(0 -100vmax);
