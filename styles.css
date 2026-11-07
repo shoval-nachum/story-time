@@ -27,6 +27,12 @@ html, body {
   -webkit-text-size-adjust: 100%;
 }
 
+/* באפליקציה ממסך הבית iOS מקצר את אזור הדף בגובה שורת השעה, ובפער שנשאר למטה הוא מצייר את צבע הרקע.
+   שם הרקע לילך, כמו הגוף של הדמות. למעלה הדף עצמו מצויר מתחת לשעה, אז הקרם נשאר */
+@media (display-mode: standalone) {
+  html, body { background-color: var(--lilac); }
+}
+
 html.reading, html.reading body { background: var(--paper); }
 
 /* דף הבית גבוה מהחלק הגלוי כשסרגלי ספארי פתוחים, אז העמוד עצמו לא נגלל. גוללים רק בתוך הדף */
