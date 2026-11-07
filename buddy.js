@@ -10,7 +10,8 @@
 
 (() => {
   const INK = "#151515";
-  const IDEAS = ["🐉", "🚀", "🦄", "🧁", "🐢", "🏰", "🌈", "🦖", "🐙", "🎈"];
+  /* הרעיונות שהדמות חושבת עליהם: אותם רעיונות, צבעים ואייקונים כמו בעיגולי הרעיונות (icons.js) */
+  const IDEAS = window.Icons?.ideas || [];
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const rnd = (a, b) => a + Math.random() * (b - a);
@@ -22,7 +23,6 @@
   let epoch = 0;
   let bubble = null;
   let side = Math.random() < 0.5 ? 1 : -1;
-  let lastShape = -1;
   let idea = -1;
   let paperH = 12;
   let noteShown = false;
@@ -137,22 +137,20 @@
 
   /* ---------- בועות רעיונות ---------- */
 
-  const circ = (pts) => pts.map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}"/>`).join("");
-  const shapes = [
-    () => { const out = []; for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; out.push([50 + Math.cos(a) * 30, 42 + Math.sin(a) * 26, 13]); } return circ(out) + '<ellipse cx="50" cy="42" rx="32" ry="28"/>'; },
-    () => circ([[30, 46, 20], [48, 30, 22], [70, 36, 20], [76, 54, 15], [56, 60, 18], [36, 60, 14]]) + '<ellipse cx="52" cy="46" rx="30" ry="20"/>',
-    () => '<path d="M50 10C74 9 90 24 89 44S72 76 49 75 10 63 11 42 27 11 50 10z"/>',
-    () => '<rect x="8" y="14" width="86" height="56" rx="28"/>',
-  ];
-  const tail = '<path d="M30 64L16 88L48 70Z" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>';
+  /* בועת מחשבה: ענן לבן ושטוח עם בליטות, ושתי נקודות קטנות שמובילות אל הראש. בלי קו מתאר.
+     צל שטוח קטן מתחת, כמו בכרטיסים, כדי שהלבן ייראה גם על הרקע הקרם.
+     הקופסה 100 על 90: הענן למעלה, מרכזו ב-(51, 34), והנקודות למטה משמאל (בצד השני הכול הפוך במראה) */
+  const CLOUD = [[51, 35, 34, 19], [21, 40, 13], [30, 24, 14], [49, 17, 16], [68, 20, 14.5], [82, 33, 13.5], [76, 47, 12], [58, 51, 13], [38, 50, 12.5]];
+  const cloud = (dy = 0) => CLOUD.map(([x, y, r, ry]) => (ry ? `<ellipse cx="${x}" cy="${y + dy}" rx="${r}" ry="${ry}"/>` : `<circle cx="${x}" cy="${y + dy}" r="${r}"/>`)).join("");
+  const bubbleSvg = () => `<svg viewBox="0 0 100 90" aria-hidden="true">
+    <g class="bt-dot2"><circle cx="12" cy="85" r="4.4" fill="#2b1f4a" opacity=".08"/><circle cx="12" cy="83.4" r="4.4" fill="#fff"/></g>
+    <g class="bt-dot1"><circle cx="23.5" cy="72.5" r="6.6" fill="#2b1f4a" opacity=".08"/><circle cx="23.5" cy="70.5" r="6.6" fill="#fff"/></g>
+    <g class="bt-main"><g fill="#2b1f4a" opacity=".08">${cloud(2.6)}</g><g fill="#fff">${cloud()}</g></g></svg>`;
   const pop = (el, delay, frames, dur) => el.animate(frames, { duration: dur, delay, easing: "cubic-bezier(.2,.9,.3,1.4)", fill: "forwards" });
 
   function openBubble() {
     side = -side;
     if (Math.random() < 0.25) side = -side;
-    let k;
-    do k = Math.floor(Math.random() * shapes.length); while (k === lastShape);
-    lastShape = k;
     /* הבועה יוצאת מהחלק העליון של הכדור, לצד, ולא עולה אף פעם על העיניים או על השם.
        מודדים איפה הם על המסך: אם הבועה חופפת לעיניים בצד, היא עולה מעליהן,
        ואם אין מספיק מקום בין השם לעיניים, היא קטנה. בסוף ממירים לאחוזים מרוחב הכדור */
@@ -187,17 +185,23 @@
       left = place(w);
       top = overEyes() ? Math.max(ceiling, eyeT - gap()) : ceiling;
     }
-    const u = w / px / 42;
     const b = document.createElement("div");
+    const it = IDEAS[idea] || {};
     b.className = "bd-think";
     b.style.cssText = `top:${(top - B.top) / px}cqw;left:${(left - B.left) / px}cqw;width:${w / px}cqw;transform-origin:${side > 0 ? "16%" : "84%"} 98%`;
-    b.innerHTML = `<svg viewBox="0 0 100 90" style="${side > 0 ? "" : "transform:scaleX(-1)"}"><g fill="#fff">${shapes[k]()}${tail}</g></svg>
-      <span class="emo" style="top:${k === 3 ? "14%" : "20%"};font-size:${17.8 * u}cqw">${IDEAS[idea]}</span>`;
+    /* האייקון במרכז הענן: ברוחב 38 מתוך 100 */
+    b.innerHTML = `<div class="bt-flip" style="${side > 0 ? "" : "transform:scaleX(-1)"}">${bubbleSvg()}</div>
+      <span class="ico" style="left:${side > 0 ? 32 : 30}%;top:${((34 - 19) / 90) * 100}%;width:38%">${it.name && window.Icons ? window.Icons.idea(it.name) : ""}</span>`;
     ball.appendChild(b);
     bubble = b;
-    const e = b.querySelector(".emo"), t = rnd(-6, 6);
-    pop(b, 0, [{ transform: `scale(0) rotate(${-14 * side}deg)` }, { transform: `scale(1.12) rotate(${t + 4 * side}deg)`, offset: 0.6 }, { transform: `scale(.95) rotate(${t - side}deg)`, offset: 0.82 }, { transform: `scale(1) rotate(${t}deg)` }], 520);
-    pop(e, 280, [{ transform: "scale(0) rotate(-30deg)" }, { transform: "scale(1.25) rotate(10deg)", offset: 0.6 }, { transform: `scale(1) rotate(${-t}deg)` }], 420);
+    /* קודם הנקודה הקטנה ליד הראש, אחריה הבינונית, ואז העיגול הגדול קופץ, והאייקון בתוכו */
+    const e = b.querySelector(".ico"), t = rnd(-5, 5), q = (c) => b.querySelector(c);
+    b.style.transform = `rotate(${t}deg)`;
+    const grow = [{ transform: "scale(0)" }, { transform: "scale(1.2)", offset: 0.6 }, { transform: "scale(1)" }];
+    pop(q(".bt-dot2"), 0, grow, 260);
+    pop(q(".bt-dot1"), 90, grow, 280);
+    pop(q(".bt-main"), 180, [{ transform: "scale(0)" }, { transform: "scale(1.1)", offset: 0.6 }, { transform: "scale(.96)", offset: 0.82 }, { transform: "scale(1)" }], 480);
+    pop(e, 380, [{ transform: "scale(0) rotate(-20deg)" }, { transform: "scale(1.18) rotate(8deg)", offset: 0.6 }, { transform: `scale(1) rotate(${-t}deg)` }], 420);
   }
 
   function closeBubble() {
@@ -205,8 +209,10 @@
     bubble = null;
     if (!b) return;
     const out = (el, delay) => el.animate([{ transform: getComputedStyle(el).transform }, { transform: "scale(1.1)", offset: 0.3 }, { transform: "scale(0)" }], { duration: 260, delay, easing: "ease-in", fill: "forwards" });
-    out(b.querySelector(".emo"), 0);
-    out(b, 90).finished.then(() => b.remove());
+    out(b.querySelector(".ico"), 0);
+    out(b.querySelector(".bt-main"), 60);
+    out(b.querySelector(".bt-dot1"), 140);
+    out(b.querySelector(".bt-dot2"), 200).finished.then(() => b.remove());
   }
 
   function clearBubbles() {
@@ -302,7 +308,7 @@
       pose({ eyes: [3 * ns, -5], mouth: "smirk" }); await sleep(800); if (e !== epoch) return;
       pose({ eyes: [-3 * ns, -4], mouth: "smirk" }); await sleep(650); if (e !== epoch) return;
       pose({ eyes: [4 * ns, -6] }); await sleep(550); if (e !== epoch) return;
-      idea = (idea + 1) % IDEAS.length;
+      idea = idea < 0 ? Math.floor(Math.random() * (IDEAS.length || 1)) : (idea + 1) % (IDEAS.length || 1);
       pose({ eyes: [0, -2], mouth: "aha", wide: 1.18 });
       openBubble(); await sleep(450); if (e !== epoch) return;
       pose({ eyes: [5 * side, -4], mouth: "grin" }); await sleep(2300); if (e !== epoch) return;

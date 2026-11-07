@@ -394,37 +394,90 @@ function artColor(key) {
   return ART_COLORS[hash % ART_COLORS.length];
 }
 
+/* ---------- המדף בדף הבית: שורות, מועדפים, רעיונות, ומסך "עוד" ---------- */
+const shelvesEl = document.getElementById("shelves");
+const moreEl = document.getElementById("more");
+const ideaGrid = document.getElementById("idea-grid");
+const FAV_KEY = "story-time-favorites";
+const ICONS = window.Icons;
+let moreKind = null;
+let ideaStart = Math.floor(Math.random() * (ICONS?.ideas.length || 1));
+
+/* המועדפים נשמרים במכשיר (עוד לא בשרת) */
+function loadFavs() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(FAV_KEY) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+function storeFavs(favs) {
+  try {
+    localStorage.setItem(FAV_KEY, JSON.stringify([...favs]));
+  } catch {}
+}
+
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const chevron = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6 8.5 12l6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const refreshIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8.5A7.5 7.5 0 1 0 19.5 15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M20 3.5V9H14.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+/* כרטיס סיפור: כריכה בצבע ובדוגמה משלו עם אייקון, השם, ולב בפינה */
+function storyCard(story, favs, selecting) {
+  const cover = ICONS ? ICONS.cover(story) : null;
+  const pat = cover ? `--pat:${cover.pattern.url};--ps:${cover.pattern.size};` : "";
+  const art = cover ? cover.svg : esc(story.emoji || "📖");
+  const pressed = selecting ? ` aria-pressed="${shelf.selected.has(story.id)}"` : "";
+  const fav = favs.has(story.id);
+  return `<li class="story-li"><button type="button" class="story-item" data-id="${esc(story.id)}" style="--art:${artColor(story.id || story.title)};${pat}"${pressed}>
+      <span class="story-emoji" aria-hidden="true">${art}</span><span class="story-name">${esc(story.title)}</span><span class="story-check" aria-hidden="true"></span></button>
+    <button type="button" class="fav" data-fav="${esc(story.id)}" aria-pressed="${fav}" aria-label="מועדף: ${esc(story.title)}">${ICONS?.heart || "♥"}</button></li>`;
+}
+
+const ideaButton = (it) =>
+  `<button type="button" class="idea" data-idea="${esc(it.name)}" style="--c:${it.color}"><i>${ICONS.idea(it.name)}</i><b>${esc(it.name)}</b></button>`;
+
+const rowHead = (kind, title, count) =>
+  `<div class="row-head"><h2><span class="row-icon" aria-hidden="true">${ICONS?.ui[kind] || ""}</span>${title}</h2>
+    <button type="button" class="see" data-more="${kind}" aria-label="עוד ${title}, ${count} בסך הכול">עוד${chevron}</button></div>`;
+
+const ideasFrom = (start, n) => [...Array(Math.min(n, ICONS.ideas.length))].map((_, k) => ICONS.ideas[(start + k) % ICONS.ideas.length]);
+
+function renderShelves(stories, favs) {
+  if (!ICONS) return;
+  if (!stories.length) {
+    shelvesEl.innerHTML = `<section class="first"><div class="first-head"><span class="row-icon" aria-hidden="true">${ICONS.ui.ideas}</span><h2>על מה יהיה הסיפור הראשון?</h2></div>
+      <p>בחרו משהו, ונמציא יחד סיפור</p><div class="ideas-grid first-ideas">${ideasFrom(ideaStart, 12).map(ideaButton).join("")}</div>
+      <button type="button" class="more-ideas">${refreshIcon}עוד רעיונות</button></section>`;
+    return;
+  }
+  const recent = [...stories].sort((a, b) => b.created - a.created);
+  const favList = recent.filter((s) => favs.has(s.id));
+  /* שומרים את מיקום הגלילה של כל שורה, כדי שלב או סנכרון לא יקפיצו אותה להתחלה */
+  const scroll = {};
+  shelvesEl.querySelectorAll(".shelf").forEach((el) => (scroll[el.dataset.row] = el.scrollLeft));
+  shelvesEl.innerHTML =
+    `<section class="row">${rowHead("recent", "סיפורים אחרונים", recent.length)}<ul class="shelf" data-row="recent">${recent.slice(0, 10).map((s) => storyCard(s, favs)).join("")}</ul></section>` +
+    (favList.length ? `<section class="row">${rowHead("favs", "מועדפים", favList.length)}<ul class="shelf" data-row="favs">${favList.slice(0, 10).map((s) => storyCard(s, favs)).join("")}</ul></section>` : "") +
+    `<section class="row">${rowHead("ideas", "רעיונות לסיפור חדש", ICONS.ideas.length)}<div class="shelf" data-row="ideas">${ideasFrom(0, 10).map(ideaButton).join("")}</div></section>`;
+  shelvesEl.querySelectorAll(".shelf").forEach((el) => {
+    if (scroll[el.dataset.row]) el.scrollLeft = scroll[el.dataset.row];
+  });
+}
+
 function renderLibrary() {
-  const stories = sortedStories();
-  library.hidden = stories.length === 0;
-  home.classList.toggle("has-library", stories.length > 0);
+  const stories = loadStories();
+  const favs = loadFavs();
+  home.classList.add("has-library");
+  renderShelves(stories, favs);
+  if (!stories.length && moreKind && moreKind !== "ideas") closeMore();
   if (!stories.length && shelf.selecting) setSelecting(false);
-  storyList.className = `story-list ${shelf.view}`;
-  storyList.classList.toggle("selecting", shelf.selecting);
-  storyList.replaceChildren(
-    ...stories.map((story) => {
-      const item = document.createElement("li");
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "story-item";
-      button.dataset.id = story.id;
-      button.style.setProperty("--art", artColor(story.id || story.title));
-      if (shelf.selecting) button.setAttribute("aria-pressed", String(shelf.selected.has(story.id)));
-      const emoji = document.createElement("span");
-      emoji.className = "story-emoji";
-      emoji.setAttribute("aria-hidden", "true");
-      emoji.textContent = story.emoji || "📖";
-      const name = document.createElement("span");
-      name.className = "story-name";
-      name.textContent = story.title;
-      const check = document.createElement("span");
-      check.className = "story-check";
-      check.setAttribute("aria-hidden", "true");
-      button.append(emoji, name, check);
-      item.append(button);
-      return item;
-    }),
-  );
+  /* מסך "עוד" */
+  if (moreKind === "recent" || moreKind === "favs") {
+    const list = moreKind === "favs" ? sortedStories().filter((s) => favs.has(s.id)) : sortedStories();
+    storyList.className = `story-list ${moreKind === "favs" ? "grid" : shelf.view}`;
+    storyList.classList.toggle("selecting", shelf.selecting);
+    storyList.innerHTML = list.map((s) => storyCard(s, favs, shelf.selecting)).join("");
+  }
   document.querySelectorAll("[data-sort]").forEach((b) => {
     b.setAttribute("aria-pressed", String(b.dataset.sort === shelf.sort));
   });
@@ -437,12 +490,96 @@ function renderLibrary() {
     count === 0 ? "בחרו סיפורים" : count === 1 ? "נבחר סיפור אחד" : `נבחרו ${count} סיפורים`;
 }
 
+function openMore(kind) {
+  moreKind = kind;
+  const titles = { recent: "כל הסיפורים", favs: "מועדפים", ideas: "כל הרעיונות" };
+  document.getElementById("more-title").textContent = titles[kind];
+  document.getElementById("more-icon").innerHTML = ICONS?.ui[kind] || "";
+  document.getElementById("more-tools").hidden = kind !== "recent";
+  document.getElementById("link-row").hidden = kind !== "recent";
+  storyList.hidden = kind === "ideas";
+  ideaGrid.hidden = kind !== "ideas";
+  if (kind === "ideas") ideaGrid.innerHTML = ICONS.ideas.map(ideaButton).join("");
+  moreEl.hidden = false;
+  moreEl.scrollTop = 0;
+  requestAnimationFrame(() => moreEl.classList.add("open"));
+  renderLibrary();
+}
+
+function closeMore() {
+  if (moreEl.hidden) return;
+  if (shelf.selecting) setSelecting(false);
+  moreKind = null;
+  moreEl.classList.remove("open");
+  setTimeout(() => {
+    if (!moreKind) moreEl.hidden = true;
+  }, 380);
+}
+
+document.getElementById("more-back").addEventListener("click", closeMore);
+
+/* לב: מסמן ומוריד מועדף, עם קפיצה קטנה ונקודות */
+function toggleFav(button) {
+  const id = button.dataset.fav;
+  const favs = loadFavs();
+  const on = !favs.has(id);
+  if (on) favs.add(id);
+  else favs.delete(id);
+  storeFavs(favs);
+  document.querySelectorAll(".fav").forEach((b) => {
+    if (b.dataset.fav === id) b.setAttribute("aria-pressed", String(on));
+  });
+  button.classList.remove("pop");
+  void button.offsetWidth;
+  button.classList.add("pop");
+  if (on) {
+    const burst = document.createElement("span");
+    burst.className = "burst";
+    burst.innerHTML = [...Array(7)].map((_, k) => {
+      const a = (k / 7) * Math.PI * 2;
+      return `<i style="--x:${(Math.cos(a) * 22).toFixed(1)}px;--y:${(Math.sin(a) * 22).toFixed(1)}px"></i>`;
+    }).join("");
+    button.append(burst);
+    setTimeout(() => burst.remove(), 600);
+  }
+  setTimeout(renderLibrary, on ? 380 : 220);
+}
+
+/* כל הנגיעות במדף ובמסך "עוד" */
+function onShelfClick(event) {
+  const fav = event.target.closest(".fav");
+  if (fav) return toggleFav(fav);
+  const see = event.target.closest("[data-more]");
+  if (see) return openMore(see.dataset.more);
+  const idea = event.target.closest("[data-idea]");
+  if (idea) return startIdea(idea.dataset.idea);
+  if (event.target.closest(".more-ideas")) {
+    ideaStart = (ideaStart + 12) % ICONS.ideas.length;
+    renderLibrary();
+    shelvesEl.querySelector(".first-ideas")?.classList.add("swap");
+    return;
+  }
+  const item = event.target.closest(".story-item");
+  if (!item) return;
+  const { id } = item.dataset;
+  if (shelf.selecting) {
+    if (shelf.selected.has(id)) shelf.selected.delete(id);
+    else shelf.selected.add(id);
+    renderLibrary();
+    return;
+  }
+  const story = loadStories().find((s) => s.id === id);
+  if (story) openSaved(story);
+}
+shelvesEl.addEventListener("click", onShelfClick);
+moreEl.addEventListener("click", onShelfClick);
+
 function setSelecting(on) {
   shelf.selecting = on;
   shelf.selected.clear();
   selectBtn.setAttribute("aria-pressed", String(on));
   selectBtn.textContent = on ? "סיום" : "בחירה";
-  library.classList.toggle("selecting", on);
+  moreEl.classList.toggle("selecting", on);
   selectBar.hidden = !on;
   renderLibrary();
 }
@@ -554,20 +691,6 @@ document.getElementById("link-btn").addEventListener("click", async () => {
   }
 });
 
-storyList.addEventListener("click", (event) => {
-  const button = event.target.closest(".story-item");
-  if (!button) return;
-  const { id } = button.dataset;
-  if (shelf.selecting) {
-    if (shelf.selected.has(id)) shelf.selected.delete(id);
-    else shelf.selected.add(id);
-    renderLibrary();
-    return;
-  }
-  const story = loadStories().find((s) => s.id === id);
-  if (story) openSaved(story);
-});
-
 renderLibrary();
 syncShelf();
 document.addEventListener("visibilitychange", () => {
@@ -624,6 +747,7 @@ const dictation = {
   busy: false,
   idleTimer: null,
   text: "",
+  seed: "",
 };
 const koalaVoice = new Audio();
 
@@ -642,6 +766,7 @@ function setLine(text) {
 
 function setKoala(state, label) {
   koalaStage.dataset.state = state;
+  if (state === "idle") dictation.seed = "";
   const confirming = state === "asking" && !!dictation.text && dictation.confirm;
   yesBtn.hidden = !confirming;
   noBtn.hidden = !confirming;
@@ -649,7 +774,10 @@ function setKoala(state, label) {
   heard.textContent = dictation.text;
   /* בכל מצב חוץ ממנוחה מתקרבים לדמות, והספרייה יוצאת מהפריים */
   const focus = state !== "idle";
-  if (focus && !home.classList.contains("focus")) homeScroll.scrollTo({ top: 0, behavior: "smooth" });
+  if (focus && !home.classList.contains("focus")) {
+    homeScroll.scrollTo({ top: 0, behavior: "smooth" });
+    closeMore();
+  }
   home.classList.toggle("focus", focus);
   document.documentElement.classList.toggle("focus", focus);
   window.Buddy?.set(state);
@@ -826,7 +954,9 @@ async function finishListening(type, reason) {
     });
     const data = await response.json();
     if (data.error) throw new Error(data.error);
-    const text = (data.text || "").trim();
+    let text = (data.text || "").trim();
+    if (text && dictation.seed) text = `${dictation.seed}, ${text}`;
+    dictation.seed = "";
     if (!text) {
       closeMicrophoneLater();
       setKoala("idle", NOT_HEARD);
@@ -867,10 +997,29 @@ async function koalaSays(text) {
   }
 }
 
+/* נגיעה ברעיון: הדמות שואלת "רצית סיפור על גלידה?" ומחכה. אפשר לענות בבועות,
+   או לגעת בה ולספר מה יקרה בסיפור, ואז מה שהילדה אמרה מתווסף לרעיון */
+function startIdea(name) {
+  if (home.classList.contains("waiting") || dictation.busy || dictation.recorder) return;
+  closeMore();
+  koalaVoice.pause();
+  dictation.seed = name;
+  dictation.text = name;
+  dictation.confirm = false;
+  topicInput.value = name;
+  setKoala("asking");
+  koalaSays(`${READ_BACK(name)} אפשר גם לספר לי מה יקרה בו.`).then(() => {
+    if (dictation.text !== name || koalaStage.dataset.state !== "asking") return;
+    dictation.confirm = true;
+    setKoala("asking");
+  });
+}
+
 yesBtn.addEventListener("click", () => {
   koalaVoice.pause();
   const topic = dictation.text;
   dictation.text = "";
+  dictation.seed = "";
   dictation.confirm = false;
   closeMicrophone();
   if (topic) createStory(topic);

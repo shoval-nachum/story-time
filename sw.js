@@ -1,10 +1,11 @@
-const CACHE = "story-time-v31";
+const CACHE = "story-time-v33";
 const SHELL = [
   "./",
   "index.html",
   "styles.css",
   "app.js",
   "narration.js",
+  "icons.js",
   "buddy.js",
   "voice-lab.html",
   "config.js",

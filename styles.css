@@ -285,17 +285,15 @@ html.reading body::after { display: none; }
 .bd-face .tiltg { transform-box: fill-box; transform-origin: 50% 100%; }
 .bd-face .tiltg { transition: transform 500ms ease-in-out; }
 
-/* בועות רעיונות: לבנות, עם אימוג'י, קופצות מהצדדים של הכדור. היחידות שלהן הן אחוז מרוחב הכדור */
-.bd-think { position: absolute; z-index: 3; aspect-ratio: 100 / 90; transform: scale(0); }
-.bd-think svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  filter: drop-shadow(0 1.6cqw 2.2cqw rgba(43, 31, 74, 0.12));
-}
-.bd-think .emo { position: absolute; left: 0; right: 0; display: block; text-align: center; line-height: 1; transform: scale(0); }
+/* בועות מחשבה: ענן לבן, נקודות שמובילות לראש, ואייקון באמצע. היחידות הן אחוז מרוחב הכדור */
+.bd-think { position: absolute; z-index: 3; aspect-ratio: 100 / 90; }
+.bd-think .bt-flip,
+.bd-think svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.bd-think .bt-main,
+.bd-think .bt-dot1,
+.bd-think .bt-dot2 { transform: scale(0); transform-box: fill-box; transform-origin: center; }
+.bd-think .ico { position: absolute; display: block; aspect-ratio: 1; transform: scale(0); }
+.bd-think .ico svg { position: static; display: block; width: 100%; height: 100%; }
 
 @media (prefers-reduced-motion: no-preference) {
   .bd-face svg { animation: breathe 3.2s ease-in-out infinite; }
@@ -459,12 +457,14 @@ html.reading body::after { display: none; }
 
 .home.focus .home-scroll { overflow: hidden; }
 
-/* מדף הספרים: לוח לבן עם פינות עגולות, מקצה לקצה של המסך גם כשהעמודה צרה ממנו */
+/* מדף הספרים: לוח לבן עם פינות עגולות, מקצה לקצה של המסך גם כשהעמודה צרה ממנו.
+   בתוכו שורות שנגללות הצידה. המידות ב-u: פיקסל של העיצוב בטלפון ברוחב 390 (design/rows.html) */
 .library {
+  --u: calc(100cqw / 390);
   position: relative;
   isolation: isolate;
   flex: 1;
-  padding: 32.94cqw 6.15cqw calc(10cqw + env(safe-area-inset-bottom) + (100lvh - 100dvh));
+  padding: calc(132 * var(--u)) 0 calc(30 * var(--u) + env(safe-area-inset-bottom) + (100lvh - 100dvh));
   transition: transform 700ms cubic-bezier(0.3, 0.8, 0.25, 1);
 }
 
@@ -483,18 +483,95 @@ html.reading body::after { display: none; }
 .home.focus .library,
 .home.focus .home-stage::before { transform: translateY(133cqw); }
 
-/* שורה ראשונה: כותרת ובחירה. שורה שנייה: סידור ותצוגה.
-   במסך רחב הכול נכנס לשורה אחת. אף כפתור לא נשבר לשורה משלו */
-.library-bar {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas:
-    "title select"
-    "sort view";
-  align-items: center;
-  gap: 12px 8px;
-  margin-bottom: 14px;
+/* שורה: כותרת עם אייקון וכפתור "עוד", ומתחתיה כרטיסים שנגללים הצידה. הכרטיס האחרון נחתך בקצה */
+.row { margin-bottom: calc(26 * var(--u)); }
+.row-head { display: flex; align-items: center; justify-content: space-between; gap: calc(10 * var(--u)); padding: 0 calc(24 * var(--u)); margin-bottom: calc(10 * var(--u)); }
+.row-head h2 { display: flex; align-items: center; gap: calc(8 * var(--u)); margin: 0; font-size: calc(21 * var(--u)); font-weight: 900; line-height: 1.2; }
+.row-icon svg { display: block; width: calc(34 * var(--u)); height: calc(34 * var(--u)); margin-block: calc(-4 * var(--u)); overflow: visible; }
+.see { display: inline-flex; align-items: center; gap: calc(2 * var(--u)); min-height: 44px; padding: 0 calc(12 * var(--u)); border: 0; border-radius: 999px; background: #f1edf8; color: var(--plum); font: inherit; font-size: calc(15 * var(--u)); font-weight: 700; cursor: pointer; }
+.see svg { width: calc(18 * var(--u)); height: calc(18 * var(--u)); }
+.shelf { display: flex; gap: calc(12 * var(--u)); margin: 0; padding: calc(4 * var(--u)) calc(24 * var(--u)) calc(10 * var(--u)); list-style: none; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: calc(24 * var(--u)); scrollbar-width: none; overscroll-behavior-x: contain; }
+.shelf::-webkit-scrollbar { display: none; }
+.shelf > * { flex: none; scroll-snap-align: start; }
+.shelf .story-li { width: calc(136 * var(--u)); }
+.story-li { position: relative; }
+
+/* לב בפינת הכרטיס: אזור נגיעה של 44, עיגול לבן ולב שטוח */
+.fav { position: absolute; z-index: 1; top: 2px; left: 2px; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.fav::before { content: ""; position: absolute; width: 32px; height: 32px; border-radius: 50%; background: rgba(255, 255, 255, 0.92); box-shadow: 0 2px 0 rgba(43, 31, 74, 0.1); }
+.fav svg { position: relative; width: 22px; height: 22px; overflow: visible; }
+.fav .full { opacity: 0; transform: scale(0.4); transform-origin: 50% 60%; transform-box: fill-box; transition: opacity 120ms, transform 320ms cubic-bezier(0.2, 0.9, 0.3, 1.5); }
+.fav[aria-pressed="true"] .full { opacity: 1; transform: none; }
+.fav.pop svg { animation: fav-pop 380ms cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+@keyframes fav-pop { 40% { transform: scale(1.35) rotate(-8deg); } 70% { transform: scale(0.92) rotate(4deg); } }
+.burst { position: absolute; inset: 0; pointer-events: none; }
+.burst i { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px; border-radius: 50%; background: #ff8fb1; animation: burst 520ms ease-out forwards; }
+@keyframes burst { to { transform: translate(var(--x), var(--y)) scale(0.3); opacity: 0; } }
+.selecting .fav,
+.list .fav { display: none; }
+
+/* רעיון: עיגול פסטל עם אייקון, והמילה מתחת */
+.idea { width: calc(86 * var(--u)); padding: 0; border: 0; background: none; color: var(--plum); font: inherit; text-align: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.idea i { display: grid; place-items: center; width: calc(86 * var(--u)); height: calc(86 * var(--u)); border-radius: 50%; background: var(--c); box-shadow: inset 0 calc(-5 * var(--u)) 0 rgba(43, 31, 74, 0.08); }
+.idea i svg { width: 66%; height: 66%; overflow: visible; }
+.idea b { display: block; margin-top: calc(6 * var(--u)); font-size: calc(13.5 * var(--u)); font-weight: 700; }
+.idea:active i { transform: scale(0.95); }
+
+/* משתמשת חדשה: הרעיונות הם התוכן הראשי */
+.first { padding: 0 calc(24 * var(--u)) calc(10 * var(--u)); }
+.first-head { display: flex; align-items: center; gap: calc(8 * var(--u)); }
+.first-head .row-icon svg { width: calc(38 * var(--u)); height: calc(38 * var(--u)); }
+.first h2 { margin: 0; font-size: calc(21.5 * var(--u)); font-weight: 900; line-height: 1.15; text-wrap: balance; }
+.first p { margin: calc(4 * var(--u)) 0 calc(18 * var(--u)); color: #5d5c78; font-size: calc(16 * var(--u)); font-weight: 500; }
+.ideas-grid { display: grid; grid-template-columns: repeat(var(--ic, 3), 1fr); gap: calc(16 * var(--u)) calc(8 * var(--u)); justify-items: center; }
+.ideas-grid[hidden] { display: none; }
+.ideas-grid .idea,
+.ideas-grid .idea i { width: calc(var(--is, 98) * var(--u)); }
+.ideas-grid .idea i { height: calc(var(--is, 98) * var(--u)); }
+.ideas-grid .idea b { font-size: calc(15 * var(--u)); }
+.ideas-grid.swap .idea { animation: swap-in 420ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both; }
+.ideas-grid.swap .idea:nth-child(3n + 2) { animation-delay: 50ms; }
+.ideas-grid.swap .idea:nth-child(3n) { animation-delay: 100ms; }
+@keyframes swap-in { from { transform: scale(0.6); opacity: 0; } }
+.more-ideas { display: flex; align-items: center; justify-content: center; gap: calc(8 * var(--u)); margin: calc(22 * var(--u)) auto 0; min-height: 48px; padding: 0 calc(22 * var(--u)); border: 0; border-radius: 999px; background: #f1edf8; color: var(--plum); font: inherit; font-size: calc(16 * var(--u)); font-weight: 700; cursor: pointer; }
+.more-ideas svg { width: calc(20 * var(--u)); height: calc(20 * var(--u)); }
+
+/* מסך "עוד": נכנס מהצד, עם חזרה גדולה למעלה */
+.more-screen {
+  --u: calc(min(100vw, 620px) / 390);
+  position: fixed;
+  z-index: 6;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  background: #fff;
+  color: var(--plum);
+  transform: translateX(-100%);
+  transition: transform 380ms cubic-bezier(0.3, 0.8, 0.25, 1);
 }
+.more-screen::-webkit-scrollbar { display: none; }
+.more-screen.open { transform: none; }
+.more-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: calc(10 * var(--u)); padding: calc(env(safe-area-inset-top) + 18px) calc(20 * var(--u)) calc(12 * var(--u)); background: #fff; }
+.more-back { flex: none; width: 48px; height: 48px; display: grid; place-items: center; border: 0; border-radius: 50%; background: #f1edf8; color: var(--plum); cursor: pointer; }
+.more-back svg { width: 24px; height: 24px; }
+.more-head h2 { margin: 0; font-size: clamp(22px, calc(26 * var(--u)), 34px); font-weight: 900; }
+.more-screen .story-list,
+.more-screen .ideas-grid { padding: 0 calc(20 * var(--u)) calc(24 * var(--u)); }
+.more-screen .story-list[hidden] { display: none; }
+.more-screen .story-list.grid { gap: calc(16 * var(--u)) calc(14 * var(--u)); }
+.more-screen .story-list.grid .story-emoji { font-size: calc(70 * var(--u)); }
+.more-screen .ideas-grid { --is: 100; }
+.more-screen .link-row[hidden] { display: none; }
+.library-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 8px;
+  padding: 0 calc(20 * var(--u)) 14px;
+}
+.library-bar[hidden] { display: none; }
+#select-btn { order: 3; margin-inline-start: auto; }
 
 .library-bar h2 {
   grid-area: title;
@@ -515,14 +592,14 @@ html.reading body::after { display: none; }
 }
 
 /* במצב בחירה אין צורך בסידור ובתצוגה, והפעולה עוברת לסרגל התחתון */
-.library.selecting .sort-group,
-.library.selecting .view-group { visibility: hidden; }
+.more-screen.selecting .sort-group,
+.more-screen.selecting .view-group { visibility: hidden; }
 
-.library.selecting { padding-bottom: 96px; }
+.more-screen.selecting { padding-bottom: 96px; }
 
 .select-bar {
   position: fixed;
-  z-index: 5;
+  z-index: 8;
   left: 0;
   right: 0;
   bottom: 0;
@@ -585,7 +662,7 @@ html.reading body::after { display: none; }
 
 .link-note:empty { display: none; }
 
-.library.selecting .link-row { visibility: hidden; }
+.more-screen.selecting .link-row { visibility: hidden; }
 
 .segmented {
   display: flex;
@@ -632,7 +709,7 @@ html.reading body::after { display: none; }
   gap: 14px;
 }
 
-.story-list.grid { grid-template-columns: 1fr 1fr; gap: 4.1cqw; }
+.story-list.grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4.1cqw; }
 .story-list.list { grid-template-columns: 1fr; gap: 10px; }
 
 .story-item {
@@ -650,6 +727,7 @@ html.reading body::after { display: none; }
 .story-item:active { transform: scale(0.97); }
 
 /* כרטיס: "כריכה" צבעונית עם האימוג'י, והשם מתחת. בהמשך תבוא כאן התמונה הראשונה של הסיפור */
+.shelf .story-item,
 .grid .story-item {
   display: flex;
   flex-direction: column;
@@ -669,18 +747,21 @@ html.reading body::after { display: none; }
 }
 
 .story-emoji { line-height: 1; }
+.shelf .story-emoji,
 .grid .story-emoji {
   display: grid;
   place-items: center;
   width: 100%;
   aspect-ratio: 4 / 5;
   font-size: 20cqw;
-  background:
-    radial-gradient(circle at 92% 18%, rgba(255, 255, 255, 0.3) 0 16%, transparent 16.5%),
-    radial-gradient(circle at 10% 98%, rgba(255, 255, 255, 0.28) 0 36%, transparent 36.5%),
-    var(--art, #ffc94d);
-  filter: drop-shadow(0 0 0 transparent);
+  background-color: var(--art, #ffc94d);
+  background-image: radial-gradient(circle at 50% 47%, var(--art, #ffc94d) 0 31%, transparent 31.5%), var(--pat, none);
+  background-size: auto, calc(var(--ps, 34) * var(--u, 0.2564cqw)) auto;
+  background-position: center;
 }
+.shelf .story-emoji svg,
+.grid .story-emoji svg { width: 52%; height: auto; overflow: visible; }
+.list .story-emoji svg { width: 44px; height: 44px; }
 .list .story-emoji { font-size: 38px; }
 
 .story-name {
@@ -693,7 +774,8 @@ html.reading body::after { display: none; }
   overflow: hidden;
 }
 
-.grid .story-name { width: 100%; padding: 2.6cqw 3cqw 3.2cqw; text-align: right; }
+.shelf .story-name,
+.grid .story-name { width: 100%; padding: calc(8 * var(--u)) calc(10 * var(--u)) calc(10 * var(--u)); font-size: calc(13.5 * var(--u)); text-align: right; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .list .story-name { flex: 1; }
 
 /* במצב בחירה: עיגול סימון בפינה, וסיפור שנבחר מקבל מסגרת */
@@ -765,6 +847,7 @@ html.reading body::after { display: none; }
   .home-stage::before { display: none; }
 
   .library {
+    --u: calc(100cqw / 1180);
     position: absolute;
     z-index: 1;
     left: 0;
@@ -774,7 +857,7 @@ html.reading body::after { display: none; }
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: none;
-    padding: 3.82cqw 4.24cqw 4cqw 5.08cqw;
+    padding: calc(36 * var(--u)) 0 calc(30 * var(--u));
     border-radius: 0 3.05cqw 3.05cqw 0;
     background: #fff;
   }
@@ -782,13 +865,23 @@ html.reading body::after { display: none; }
   .library::-webkit-scrollbar { display: none; }
   .library::before { display: none; }
   .home.focus .library { transform: translateX(-105%); }
-
-  .library-bar h2 { font-size: 2.2cqw; }
-  .story-list.grid { grid-template-columns: repeat(3, 1fr); gap: 2.5cqw 2.12cqw; }
-  .story-item { border-radius: 1.9cqw; }
-  .grid .story-item { box-shadow: 0 0.4cqw 0 rgba(43, 31, 74, 0.08); }
-  .grid .story-emoji { font-size: 5.8cqw; }
-  .grid .story-name { padding: 0.9cqw 1cqw 1.1cqw; font-size: 15px; }
+  .row-head { padding-inline: calc(50 * var(--u)) calc(40 * var(--u)); }
+  .shelf { padding-inline: calc(50 * var(--u)) calc(40 * var(--u)); scroll-padding-inline: calc(50 * var(--u)); }
+  .shelf .story-li { width: calc(150 * var(--u)); }
+  .story-item { border-radius: calc(18 * var(--u)); }
+  .first { padding: 0 calc(50 * var(--u)) 0 calc(40 * var(--u)); }
+  .first h2 { font-size: calc(30 * var(--u)); }
+  .first p { font-size: calc(18 * var(--u)); }
+  .first-head .row-icon svg { width: calc(44 * var(--u)); height: calc(44 * var(--u)); }
+  .first .ideas-grid { --ic: 4; --is: 118; gap: calc(22 * var(--u)) calc(12 * var(--u)); }
+  .more-screen { --u: calc(100vw / 1180); right: auto; width: 61.86vw; border-radius: 0 3.05vw 3.05vw 0; transform: translateX(-105%); }
+  .more-screen.open { transform: none; }
+  .more-head { padding-top: calc(30 * var(--u)); }
+  .more-screen .story-list,
+  .more-screen .ideas-grid,
+  .more-screen .library-bar { padding-inline: calc(50 * var(--u)) calc(40 * var(--u)); }
+  .more-screen .story-list.grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .more-screen .ideas-grid { --ic: 5; --is: 104; }
   .note { width: min(40cqw, 90vw); }
   .type-ui { width: min(40cqw, 92vw); }
 }

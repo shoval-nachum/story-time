@@ -47,9 +47,23 @@
           </div>
         </form>
 
-    <section id="library" class="library glib" hidden aria-labelledby="library-title">
-      <div class="library-bar">
-        <h2 id="library-title">הסיפורים שלי</h2>
+    <!-- הלוח הלבן: שורות של סיפורים, מועדפים ורעיונות. למשתמשת חדשה, רק רעיונות -->
+    <section id="library" class="library" aria-label="המדף">
+      <div id="shelves" class="shelves"></div>
+    </section>
+      </div>
+    </div>
+
+    <!-- מסך "עוד": הרשימה המלאה של שורה. בסיפורים יש גם סידור, תצוגה, בחירה ומחיקה -->
+    <section id="more" class="more-screen" hidden aria-labelledby="more-title">
+      <div class="more-head">
+        <button id="more-back" class="more-back" type="button" aria-label="חזרה">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span id="more-icon" class="row-icon" aria-hidden="true"></span>
+        <h2 id="more-title"></h2>
+      </div>
+      <div id="more-tools" class="library-bar">
         <button id="select-btn" class="tool" type="button" aria-pressed="false">בחירה</button>
         <div class="segmented sort-group" role="group" aria-label="סידור">
           <button type="button" data-sort="date" aria-pressed="true">חדשים</button>
@@ -65,13 +79,12 @@
         </div>
       </div>
       <ul id="story-list" class="story-list grid"></ul>
-      <div class="link-row">
+      <div id="idea-grid" class="ideas-grid"></div>
+      <div id="link-row" class="link-row">
         <button id="link-btn" class="link-btn" type="button">חיבור מכשיר נוסף למדף</button>
         <p id="link-note" class="link-note" role="status"></p>
       </div>
     </section>
-      </div>
-    </div>
 
     <div id="select-bar" class="select-bar" hidden>
       <span id="select-count" class="select-count" role="status"></span>
@@ -96,6 +109,7 @@
   <script src="config.js"></script>
   <script src="story.js"></script>
   <script src="narration.js"></script>
+  <script src="icons.js"></script>
   <script src="buddy.js"></script>
   <script src="app.js"></script>
 </body>
