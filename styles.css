@@ -201,8 +201,8 @@ html.reading body::after { display: none; }
 
 .home.focus .child-name { opacity: 0; transform: translateX(-50%) scale(0.85); }
 
-/* הדמות */
-.buddy { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
+/* הדמות. בזמן כתיבה הכדור רחב מהמסך, ובלי חיתוך בצדדים הדף נגלל הצידה ו"קופץ" כשהכדור קטן בחזרה */
+.buddy { position: absolute; z-index: 2; inset: 0; pointer-events: none; overflow-x: clip; overflow-y: visible; }
 
 .bd-ball,
 .bd-shadow,
@@ -302,13 +302,13 @@ html.reading body::after { display: none; }
   @keyframes breathe { 50% { transform: translateY(-0.8cqw); } }
 }
 
-/* הכדור הוא כפתור: נגיעה בו מתחילה הקלטה */
+/* הכדור הוא כפתור: נגיעה בו מתחילה הקלטה. הכפתור לא יוצא מצדי המסך, כדי שהדף לא ייגלל הצידה */
 .topic-form .buddy-btn {
   position: absolute;
   z-index: 4;
-  left: calc((var(--bx) - var(--br)) * 1cqw);
+  left: max(0cqw, calc((var(--bx) - var(--br)) * 1cqw));
+  right: max(0cqw, calc((100 - var(--bx) - var(--br)) * 1cqw));
   top: calc((var(--by) - var(--br)) * 1cqw);
-  width: calc(var(--br) * 2cqw);
   height: calc(var(--br) * 2cqw);
   margin: 0;
   padding: 0;

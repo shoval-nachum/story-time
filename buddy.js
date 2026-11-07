@@ -74,8 +74,8 @@
     <defs><clipPath id="bd-paper"><rect class="paper-clip" x="38" y="141" width="22" height="12"/></clipPath>
       <linearGradient id="bd-roll" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f1fb"/><stop offset=".55" stop-color="#d9d2ec"/><stop offset="1" stop-color="#bfb4dd"/></linearGradient>
       <linearGradient id="bd-roll2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#f3f0fa"/><stop offset=".8" stop-color="#c9bee6"/><stop offset="1" stop-color="#a698d0"/></linearGradient></defs>
-    <path class="arm-write" d="M76 160Q66 158 56 147" fill="none" stroke="${INK}" stroke-width=".8" stroke-linecap="round" opacity="0"/>
-    <g class="pencil" opacity="0"><g class="pencil-r"><rect x="-1" y="-11" width="2" height="10.5" rx=".4" fill="#ffc94d"/><rect x="-1" y="-12.4" width="2" height="1.8" rx=".5" fill="#f6a9c8"/><rect x="-1" y="-10.8" width="2" height=".6" fill="#e0a92e"/><ellipse cx="0" cy="-1" rx="1.9" ry="1.2" fill="${INK}"/></g></g>
+    <path class="arm-write" d="M72 156Q64 155 56 147" fill="none" stroke="${INK}" stroke-width="1.3" stroke-linecap="round" opacity="0"/>
+    <g class="pencil" opacity="0"><g class="pencil-r"><rect x="-1" y="-11" width="2" height="10.5" rx=".4" fill="#ffc94d"/><rect x="-1" y="-12.4" width="2" height="1.8" rx=".5" fill="#f6a9c8"/><rect x="-1" y="-10.8" width="2" height=".6" fill="#e0a92e"/><ellipse cx="0" cy="-1" rx="2.3" ry="1.5" fill="${INK}"/></g></g>
     <g class="note-g">
       <g clip-path="url(#bd-paper)"><rect x="38.5" y="141" width="21" height="34" fill="#fff"/>
         <g stroke="#e4dff0" stroke-width=".45">${[0, 1, 2, 3, 4, 5].map((i) => `<path d="M41 ${147 + i * 4}h16"/>`).join("")}</g></g>
@@ -84,8 +84,8 @@
       <rect class="roll-shadow" x="38.5" y="150" width="21" height="1.6" fill="#2b1f4a" opacity=".07"/>
       <rect class="roll-body" x="37.8" y="151" width="22.4" height="3.8" rx="1.9" fill="url(#bd-roll2)"/>
     </g>
-    <g class="arm-hold" opacity="0"><path d="M24 158q8 4 14.6-2.4" fill="none" stroke="${INK}" stroke-width=".8" stroke-linecap="round"/><ellipse cx="39.6" cy="154.4" rx="1.9" ry="1.2" fill="${INK}" transform="rotate(-15 39.6 154.4)"/></g>
-    <g class="arm-chin" opacity="0"><path d="M76 160C71 151 66 141 60.4 136.6" fill="none" stroke="${INK}" stroke-width=".8" stroke-linecap="round"/><ellipse cx="59.2" cy="136.4" rx="1.9" ry="1.2" fill="${INK}" transform="rotate(20 59.2 136.4)"/></g>
+    <g class="arm-hold" opacity="0"><path d="M26 157q7 3.6 12.6-1.4" fill="none" stroke="${INK}" stroke-width="1.3" stroke-linecap="round"/><ellipse cx="39.6" cy="154.4" rx="2.3" ry="1.5" fill="${INK}" transform="rotate(-15 39.6 154.4)"/></g>
+    <g class="arm-chin" opacity="0"><path d="M67.5 148.5C65.6 144.6 63.4 140.2 60.4 136.6" fill="none" stroke="${INK}" stroke-width="1.3" stroke-linecap="round"/><ellipse cx="59.2" cy="136.4" rx="2.3" ry="1.5" fill="${INK}" transform="rotate(20 59.2 136.4)"/></g>
   </svg>`;
 
   /* ---------- כלים ---------- */
@@ -153,11 +153,44 @@
     let k;
     do k = Math.floor(Math.random() * shapes.length); while (k === lastShape);
     lastShape = k;
-    /* הבועה יוצאת מהחלק העליון של הכדור, לצד. היחידות הן אחוזים מרוחב הכדור */
-    const u = rnd(0.85, 1.2), w = 42 * u, top = rnd(-16, -8) - (u - 1) * 14, edge = -rnd(6, 12);
+    /* הבועה יוצאת מהחלק העליון של הכדור, לצד, ולא עולה אף פעם על העיניים או על השם.
+       מודדים איפה הם על המסך: אם הבועה חופפת לעיניים בצד, היא עולה מעליהן,
+       ואם אין מספיק מקום בין השם לעיניים, היא קטנה. בסוף ממירים לאחוזים מרוחב הכדור */
+    const B = ball.getBoundingClientRect(), px = B.width / 100;
+    const eyes = [...root.querySelectorAll(".eye ellipse")].map((el) => el.getBoundingClientRect());
+    const eyeL = Math.min(...eyes.map((r) => r.left)) - 0.1 * B.width;
+    const eyeR = Math.max(...eyes.map((r) => r.right)) + 0.1 * B.width;
+    const eyeT = Math.min(...eyes.map((r) => r.top)) - 0.05 * B.width;
+    const nameBox = document.getElementById("child-name")?.getBoundingClientRect();
+    const ceiling = nameBox && nameBox.width ? nameBox.bottom + 0.03 * B.width : 6;
+    /* גבולות: קצוות המסך, ובטאבלט גם הלוח של הספרייה משמאל */
+    const lib = document.getElementById("library")?.getBoundingClientRect();
+    const minX = lib && lib.width && lib.right < B.left + 1 ? lib.right + 6 : 6;
+    const maxX = document.documentElement.clientWidth - 6;
+    const out = rnd(6, 12) * px;
+    const place = (w) => (side > 0 ? Math.min(maxX, B.right + out) - w : Math.max(minX, B.left - out));
+    let w = 42 * rnd(0.85, 1.2) * px;
+    let left = place(w);
+    let top = B.top + rnd(-16, -8) * px;
+    /* הסיבוב והקפיצה בפתיחה מגדילים את הבועה לרגע, אז משאירים מרווח */
+    const gap = () => w * 0.9 + w * 0.2;
+    const overEyes = () => left < eyeR && left + w > eyeL;
+    /* קודם מנסים להזיז את הבועה הצידה, מחוץ לאזור העיניים. רק אם אין מקום, היא עולה מעליהן */
+    if (overEyes()) {
+      const aside = side > 0 ? eyeR : eyeL - w;
+      if (aside >= minX && aside + w <= maxX) left = aside;
+    }
+    if (overEyes() && top + gap() > eyeT) top = eyeT - gap();
+    if (top < ceiling) {
+      const floor = overEyes() ? eyeT : B.top + 0.3 * B.width;
+      w = Math.max(18 * px, (floor - ceiling) / 1.1);
+      left = place(w);
+      top = overEyes() ? Math.max(ceiling, eyeT - gap()) : ceiling;
+    }
+    const u = w / px / 42;
     const b = document.createElement("div");
     b.className = "bd-think";
-    b.style.cssText = `top:${top}cqw;${side > 0 ? "right" : "left"}:${edge}cqw;width:${w}cqw;transform-origin:${side > 0 ? "16%" : "84%"} 98%`;
+    b.style.cssText = `top:${(top - B.top) / px}cqw;left:${(left - B.left) / px}cqw;width:${w / px}cqw;transform-origin:${side > 0 ? "16%" : "84%"} 98%`;
     b.innerHTML = `<svg viewBox="0 0 100 90" style="${side > 0 ? "" : "transform:scaleX(-1)"}"><g fill="#fff">${shapes[k]()}${tail}</g></svg>
       <span class="emo" style="top:${k === 3 ? "14%" : "20%"};font-size:${17.8 * u}cqw">${IDEAS[idea]}</span>`;
     ball.appendChild(b);
@@ -195,7 +228,7 @@
   function placePencil(x, y, r) {
     N(".pencil").setAttribute("transform", `translate(${x} ${y})`);
     N(".pencil-r").setAttribute("transform", `rotate(${r})`);
-    N(".arm-write").setAttribute("d", `M76 160Q${(x + 76) / 2 + 4} ${y + 14} ${x} ${y - 1}`);
+    N(".arm-write").setAttribute("d", `M72 156Q${(x + 72) / 2 + 3} ${y + 11} ${x} ${y - 1}`);
   }
 
   function showNote() {
