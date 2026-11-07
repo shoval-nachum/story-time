@@ -20,6 +20,7 @@ html, body {
   margin: 0;
   height: 100%;
   background: linear-gradient(var(--cream) 0 70%, var(--lilac) 70%) fixed;
+  background-color: var(--cream);
   color: var(--ink);
   font-family: var(--font);
   overscroll-behavior: none;
@@ -27,6 +28,24 @@ html, body {
 }
 
 html.reading, html.reading body { background: var(--paper); }
+
+/* ספארי צובע את סרגל השעה ואת סרגל הכתובת לפי אלמנטים קבועים בקצוות המסך.
+   פס דק בצבע הקרם למעלה ופס בצבע הלילך למטה, כדי שהסרגלים ימשיכו את הדף ולא יהיו לבנים */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: 50;
+  left: 0;
+  right: 0;
+  height: 2px;
+  pointer-events: none;
+}
+
+body::before { top: 0; background: var(--cream); }
+body::after { bottom: 0; background: var(--lilac); }
+html.reading body::before,
+html.reading body::after { display: none; }
 
 [hidden] { display: none !important; }
 
