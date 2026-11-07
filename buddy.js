@@ -1,10 +1,12 @@
 "use strict";
 
-/* הדמות של דף הבית: כיפה בלילך עם תלתלים, פנים חיות, בועות רעיונות ופתק שהיא כותבת עליו.
+/* הדמות של דף הבית: כדור לילך עם תלתלים גדולים שזזים בקצב נמוך, צל מגע, פנים חיות, בועות רעיונות ופתק שהיא כותבת עליו.
    האפליקציה קובעת את המצב (Buddy.set), והדמות מתנהגת לפיו:
    idle מחפשת רעיונות ובועות קופצות, listening שולפת פתק וכותבת מה שהילדה אומרת,
    thinking יד לסנטר, asking מחכה לתשובה, shaking מנענעת את הראש, writing כותבת את הסיפור.
-   הקואורדינטות בציורים הן ביחידות של אחוז מרוחב העמודה (cqw) */
+   המיקום והגודל של הכדור, הפנים והצל נקבעים ב-CSS (משתנים --bx, --by, --br, --fy, --fw, --sy, --sw),
+   כך שאותה דמות משנה גודל ומקום בין מסך הבית למצב הכתיבה, ובין טלפון לטאבלט.
+   הפנים והפתק מצוירים ביחידות של עמודה ברוחב 100, ומוקטנים או מוגדלים כשכבה אחת */
 
 (() => {
   const INK = "#151515";
@@ -24,19 +26,36 @@
   let idea = -1;
   let paperH = 12;
   let noteShown = false;
+  let ball = null;
+  let boilTimer = 0;
 
   /* ---------- ציור ---------- */
 
   const eye = (cx, s) => `<g class="eye"><ellipse cx="${cx}" cy="128" rx="12" ry="10.5" fill="#fff"/>
     <g clip-path="url(#bd-eye-${s})"><circle class="pupil" cx="${cx + 1}" cy="129" r="5.8" fill="${INK}"/></g></g>`;
 
-  const bumps = (() => {
-    const r = 9.5, R = 53, out = [];
-    const step = (r * 1.55) / R;
-    for (let a = Math.PI; a <= Math.PI * 2 + 1e-6; a += step) {
-      out.push(`<circle cx="${(50 + Math.cos(a) * R).toFixed(2)}" cy="${(145 + Math.sin(a) * R).toFixed(2)}" r="${r}"/>`);
+  /* הכדור: שלוש גרסאות של התלתלים, כל אחת קצת שונה, ומחליפים ביניהן 5 פעמים בשנייה כמו אנימציה מצוירת ביד */
+  const hash = (n) => { const v = Math.sin(n * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+  const ballSvg = (() => {
+    const r = 0.17, n = Math.round((2 * Math.PI) / (r * 1.55));
+    let frames = "";
+    for (let f = 0; f < 3; f++) {
+      let g = "";
+      for (let i = 0; i < n; i++) {
+        const k = f * 1000 + i;
+        const a = ((i + (hash(k) - 0.5) * 0.32) / n) * 2 * Math.PI;
+        const d = 1 + (hash(k + 7) - 0.5) * r * 0.36;
+        const rr = r * (1 + (hash(k + 13) - 0.5) * 0.3);
+        g += `<circle cx="${(Math.cos(a) * d).toFixed(4)}" cy="${(Math.sin(a) * d).toFixed(4)}" r="${rr.toFixed(4)}"/>`;
+      }
+      frames += `<g class="bd-f${f}">${g}</g>`;
     }
-    return out.join("");
+    let dots = "";
+    for (let i = 0; i < 52; i++) {
+      const a = hash(i) * 6.283, d = Math.sqrt(hash(i + 500)) * 0.9;
+      dots += `<circle cx="${(Math.cos(a) * d).toFixed(3)}" cy="${(Math.sin(a) * d).toFixed(3)}" r="${(0.009 + (i % 3) * 0.006).toFixed(3)}"/>`;
+    }
+    return `<svg viewBox="-1 -1 2 2" aria-hidden="true"><g class="bd-curls"><circle r="1"/>${frames}</g><g class="bd-dots">${dots}</g></svg>`;
   })();
 
   const faceSvg = `<svg viewBox="78 74 144 122" aria-hidden="true">
@@ -69,13 +88,6 @@
     <g class="arm-chin" opacity="0"><path d="M76 160C71 151 66 141 60.4 136.6" fill="none" stroke="${INK}" stroke-width=".8" stroke-linecap="round"/><ellipse cx="59.2" cy="136.4" rx="1.9" ry="1.2" fill="${INK}" transform="rotate(20 59.2 136.4)"/></g>
   </svg>`;
 
-  const texSvg = `<svg class="bd-layer" viewBox="0 0 100 174" aria-hidden="true">
-    <defs><filter id="bd-tx" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency=".75" numOctaves="1" seed="8" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  3.4 0 0 0 -2.2"/></filter>
-      <clipPath id="bd-head"><circle cx="50" cy="145" r="53"/>${bumps}</clipPath>
-      <linearGradient id="bd-fade" x1="0" y1="80" x2="0" y2="165" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
-      <mask id="bd-mask" maskUnits="userSpaceOnUse" x="0" y="70" width="100" height="104"><rect x="0" y="70" width="100" height="104" fill="url(#bd-fade)"/></mask></defs>
-    <g clip-path="url(#bd-head)"><g mask="url(#bd-mask)"><rect x="0" y="70" width="100" height="104" filter="url(#bd-tx)" opacity=".8"/></g></g></svg>`;
-
   /* ---------- כלים ---------- */
 
   const N = (q) => root.querySelector(".bd-notes " + q);
@@ -105,11 +117,16 @@
   }
 
   const rig = () => $(".rig");
-  const squish = () =>
-    rig().animate(
+  const squish = () => {
+    root.querySelector(".bd-ball svg").animate(
+      [{ transform: "scale(1,1)" }, { transform: "scale(1.05,.93)", offset: 0.35 }, { transform: "scale(.98,1.03)", offset: 0.7 }, { transform: "scale(1,1)" }],
+      { duration: 380, easing: "ease-out" },
+    );
+    return rig().animate(
       [{ transform: "scale(1,1)" }, { transform: "scale(1.06,.9)", offset: 0.35 }, { transform: "scale(.97,1.05)", offset: 0.7 }, { transform: "scale(1,1)" }],
       { duration: 380, easing: "ease-out" },
     );
+  };
   const nod = (d = 1.4, ms = 340) =>
     rig().animate([{ transform: "translateY(0)" }, { transform: `translateY(${d * 2.2}px)`, offset: 0.45 }, { transform: "translateY(0)" }], { duration: ms, easing: "ease-in-out" });
   function tilt(deg, ms = 500) {
@@ -136,13 +153,14 @@
     let k;
     do k = Math.floor(Math.random() * shapes.length); while (k === lastShape);
     lastShape = k;
-    const u = rnd(0.85, 1.3), w = 26 * u, top = rnd(80, 88) - (u - 1) * 6, edge = rnd(2, 7);
+    /* הבועה יוצאת מהחלק העליון של הכדור, לצד. היחידות הן אחוזים מרוחב הכדור */
+    const u = rnd(0.85, 1.2), w = 42 * u, top = rnd(-16, -8) - (u - 1) * 14, edge = -rnd(6, 12);
     const b = document.createElement("div");
     b.className = "bd-think";
     b.style.cssText = `top:${top}cqw;${side > 0 ? "right" : "left"}:${edge}cqw;width:${w}cqw;transform-origin:${side > 0 ? "16%" : "84%"} 98%`;
     b.innerHTML = `<svg viewBox="0 0 100 90" style="${side > 0 ? "" : "transform:scaleX(-1)"}"><g fill="#fff">${shapes[k]()}${tail}</g></svg>
-      <span class="emo" style="top:${k === 3 ? "14%" : "20%"};font-size:${11 * u}cqw">${IDEAS[idea]}</span>`;
-    root.appendChild(b);
+      <span class="emo" style="top:${k === 3 ? "14%" : "20%"};font-size:${17.8 * u}cqw">${IDEAS[idea]}</span>`;
+    ball.appendChild(b);
     bubble = b;
     const e = b.querySelector(".emo"), t = rnd(-6, 6);
     pop(b, 0, [{ transform: `scale(0) rotate(${-14 * side}deg)` }, { transform: `scale(1.12) rotate(${t + 4 * side}deg)`, offset: 0.6 }, { transform: `scale(.95) rotate(${t - side}deg)`, offset: 0.82 }, { transform: `scale(1) rotate(${t}deg)` }], 520);
@@ -323,6 +341,19 @@
     }
   }
 
+  /* התלתלים: מחליפים פריים כל 200 מילישניות. מי שביקש פחות תנועה רואה אותם קבועים */
+  function boil() {
+    clearInterval(boilTimer);
+    let f = 0;
+    root.dataset.f = 0;
+    if (still.matches) return;
+    boilTimer = setInterval(() => {
+      if (document.hidden) return;
+      f = (f + 1) % 3;
+      root.dataset.f = f;
+    }, 200);
+  }
+
   /* ---------- ממשק ---------- */
 
   function set(next) {
@@ -348,11 +379,12 @@
   function mount(el) {
     root = el;
     $ = (q) => root.querySelector(q);
-    root.innerHTML = `<div class="bd-dome"></div>
-      <svg class="bd-layer bd-bumps" viewBox="0 0 100 174" aria-hidden="true">${bumps}</svg>
-      ${texSvg}
-      <div class="bd-face">${faceSvg}</div>
-      ${notesSvg}`;
+    root.innerHTML = `<div class="bd-shadow"></div>
+      <div class="bd-ball">${ballSvg}</div>
+      <div class="bd-fx"><div class="bd-face">${faceSvg}</div>${notesSvg}</div>`;
+    ball = root.querySelector(".bd-ball");
+    boil();
+    still.addEventListener?.("change", boil);
     epoch++;
     ideaLoop(epoch);
   }

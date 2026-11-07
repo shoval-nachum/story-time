@@ -27,15 +27,17 @@ html, body {
 }
 
 /* רקע העמוד: צבע הבסיס קרם, כי לפיו iOS וספארי צובעים את האזור שמאחורי השעה.
-   מעליו תמונת רקע בגובה שני מסכים: קרם עד 70% מהמסך ולילך משם. רקע העמוד מצויר על כל החלון,
-   גם בפער ש-iOS משאיר למטה באפליקציה ממסך הבית ומאחורי סרגל הכתובת, ושם רואים את הלילך */
+   מעליו תמונת רקע בגובה שני מסכים: קרם עד 70% מהמסך ולבן משם, כמו הלוח של הספרייה. רקע העמוד מצויר על כל החלון,
+   גם בפער ש-iOS משאיר למטה באפליקציה ממסך הבית ומאחורי סרגל הכתובת, ושם רואים את הלבן.
+   בזמן כתיבה הלוח יורד והמסך כולו קרם */
 html {
   background-color: var(--cream);
-  background-image: linear-gradient(var(--cream) 0 35%, var(--lilac) 35%);
+  background-image: linear-gradient(var(--cream) 0 35%, #fff 35%);
   background-size: 100% 200%;
   background-repeat: no-repeat;
 }
 
+html.focus { background-image: none; }
 html.reading, html.reading body { background: var(--paper); }
 
 /* דף הבית גבוה מהחלק הגלוי כשסרגלי ספארי פתוחים, אז העמוד עצמו לא נגלל. גוללים רק בתוך הדף */
@@ -43,7 +45,7 @@ html:not(.reading),
 html:not(.reading) body { overflow: hidden; }
 
 /* ספארי צובע את סרגל השעה ואת סרגל הכתובת לפי אלמנטים קבועים בקצוות המסך.
-   פס דק בצבע הקרם למעלה ופס בצבע הלילך למטה, כדי שהסרגלים ימשיכו את הדף ולא יהיו לבנים */
+   פס דק בצבע הקרם למעלה ופס לבן למטה (קרם בזמן כתיבה), כדי שהסרגלים ימשיכו את הדף */
 body::before,
 body::after {
   content: "";
@@ -56,18 +58,18 @@ body::after {
 }
 
 body::before { top: 0; background: var(--cream); }
-body::after { bottom: 0; background: var(--lilac); }
+body::after { bottom: 0; background: #fff; }
+html.focus body::after { background: var(--cream); }
 html.reading body::before,
 html.reading body::after { display: none; }
 
 [hidden] { display: none !important; }
 
-/* דף הפתיחה: למעלה קרם עם השם שלה, ומלמטה עולה הדמות בלילך. הספרייה ממשיכה על הגוף שלה.
-   כל המידות ביחידות cqw של העמודה, כך שהציור נראה אותו דבר בכל רוחב */
-/* הרקע עצמו לילך מהגובה שבו הגוף כבר רחב כמו המסך, כדי שלא תיראה רצועת קרם מתחת לדמות
-   בשום דפדפן (גם כשספארי מחשב גובה אחר לסרגלים שלו) */
-/* דף הבית מוצמד לארבעת קצוות המסך, ולא מחושב לפי "גובה המסך": באפליקציה ממסך הבית iOS מחשב
-   את הגובה בלי אזור השעה, ונשארת רצועה ריקה למטה. בספארי הוא גדל עד הגובה המלא, מאחורי סרגל הכתובת */
+/* דף הפתיחה: למעלה קרם עם השם שלה והדמות, ולמטה לוח לבן עם הספרייה. הדמות יושבת על קצה הלוח.
+   המידות נלקחו מהעיצוב ב-design/ball.html, מטלפון ברוחב 390 (מטאבלט לרוחב ברוחב 1180, למטה).
+   הכול ביחידות cqw של העמודה, כך שהציור נראה אותו דבר בכל רוחב.
+   דף הבית מוצמד לארבעת קצוות המסך, ולא מחושב לפי "גובה המסך": באפליקציה ממסך הבית iOS מחשב
+   את הגובה בלי אזור השעה, ונשארת רצועה ריקה למטה */
 .home {
   position: fixed;
   top: 0;
@@ -75,13 +77,8 @@ html.reading body::after { display: none; }
   right: 0;
   bottom: 0;
   min-height: 100lvh;
-  background: linear-gradient(var(--cream) 0 88%, var(--lilac) 88%);
+  background: var(--cream);
   color: var(--plum);
-}
-
-/* בטלפון הגוף רחב כמו המסך כבר מ-60% מהגובה, אז אפשר להתחיל את הלילך גבוה יותר */
-@media (max-width: 640px) {
-  .home { background: linear-gradient(var(--cream) 0 70%, var(--lilac) 70%); }
 }
 
 .home-scroll {
@@ -101,100 +98,165 @@ html.reading body::after { display: none; }
   width: min(100%, 620px, calc(100dvh * 0.5));
   min-height: 100%;
   margin: 0 auto;
-  padding-top: env(safe-area-inset-top);
   container-type: inline-size;
-  background: linear-gradient(transparent 0 128cqw, var(--lilac) 128cqw);
-  transform-origin: 50% 112cqw;
-  transition: transform 700ms cubic-bezier(0.3, 0.8, 0.25, 1);
 }
 
+/* המיקומים של הטקסט, הכדור, הפנים והצל. buddy.js וה-CSS שלמטה קוראים אותם.
+   tx מרכז הטקסט, ly ו-lf המשפט הקטן (ראש השורה וגודל), ny ו-nf השם,
+   bx ו-by מרכז הכדור, br הרדיוס, fy גובה העיניים, fw רוחב הפנים, sy ו-sw הצל, panel ראש הלוח הלבן */
 .home-stage {
+  --tx: 50;
+  --ly: 19.36;
+  --lf: 5.9;
+  --lw: 84cqw;
+  --ny: 24.12;
+  --nf: 16.41;
+  --bx: 50;
+  --by: 84.62;
+  --br: 31.03;
+  --fy: 72.82;
+  --fw: 77.54;
+  --sy: 117.44;
+  --sw: 27.69;
+  --panel: 90.26;
   position: relative;
   z-index: 1;
   flex: none;
-  height: 174cqw;
+  height: calc(var(--panel) * 1cqw);
   margin: 0;
 }
 
-/* בלי סיפורים אין ספרייה: הבמה נמתחת עד תחתית המסך, כדי שהגוף ימשיך עד למטה */
-.home:not(.has-library) .home-stage {
-  flex: 1 0 auto;
-  height: auto;
-  min-height: 174cqw;
+/* כתיבה: הלוח יורד מהמסך, הכדור גדל ויורד, והשם מתחלף בכותרת גדולה */
+.home.focus .home-stage {
+  --ly: 20.27;
+  --lf: 9.74;
+  --by: 126.15;
+  --br: 67.95;
+  --fy: 90;
+  --fw: 118.46;
 }
 
-/* במסך רחב (טאבלט) העמודה צרה מהמסך: הגוף ממשיך לכל הרוחב מתחת לראש, כמו כתפיים */
+/* בלי סיפורים אין ספרייה: הלוח הלבן ממשיך עד תחתית המסך */
+.home:not(.has-library) .home-stage { flex: 1 0 auto; }
+.home.has-library .home-stage::before { display: none; }
+
 .home-stage::before {
   content: "";
   position: absolute;
-  top: 128cqw;
+  top: calc(var(--panel) * 1cqw);
   bottom: -2px;
   left: calc(50% - 50vw);
   right: calc(50% - 50vw);
-  border-radius: 24cqw 24cqw 0 0;
-  background: var(--lilac);
+  border-radius: 8.72cqw 8.72cqw 0 0;
+  background: #fff;
+  transition: transform 700ms cubic-bezier(0.3, 0.8, 0.25, 1);
 }
 
+/* הלוגו נשאר לקוראי מסך בלבד. בעיצוב החדש השם שלה הוא הכותרת */
 .logo {
   position: absolute;
-  top: 7cqw;
-  left: 0;
-  right: 0;
-  margin: 0;
-  text-align: center;
-  font-size: 4.6cqw;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.03em;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-.hello {
+.hello { display: contents; }
+
+.mic-label,
+.child-name {
   position: absolute;
-  top: 35cqw;
-  left: 0;
-  right: 0;
+  z-index: 3;
+  left: calc(var(--tx) * 1cqw);
+  margin: 0;
   text-align: center;
+  transform: translateX(-50%);
 }
 
 .mic-label {
-  display: block;
-  min-height: 6cqw;
-  padding: 0 15cqw;
-  font-size: 4.6cqw;
-  text-wrap: balance;
+  top: calc(var(--ly) * 1cqw);
+  width: var(--lw);
+  font-size: calc(var(--lf) * 1cqw);
   font-weight: 700;
-  line-height: 6cqw;
+  line-height: 1.1;
+  text-wrap: balance;
   opacity: 0.65;
-  transition: opacity 300ms, transform 300ms;
+  transition: opacity 300ms, transform 300ms, top 700ms, left 700ms, font-size 700ms;
 }
 
-.mic-label.out { opacity: 0; transform: translateY(-2cqw); }
+.mic-label.out { opacity: 0; transform: translate(-50%, -2cqw); }
+.home.focus .mic-label { font-weight: 900; }
+.home.focus .mic-label:not(.out) { opacity: 1; }
 
 .child-name {
-  display: block;
-  margin-top: 1cqw;
-  font-size: 25cqw;
+  top: calc(var(--ny) * 1cqw);
+  font-size: calc(var(--nf) * 1cqw);
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.03em;
+  white-space: nowrap;
+  transition: opacity 300ms, transform 500ms, left 700ms;
 }
+
+.home.focus .child-name { opacity: 0; transform: translateX(-50%) scale(0.85); }
 
 /* הדמות */
-.buddy { position: absolute; inset: 0; pointer-events: none; }
+.buddy { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
 
-.bd-dome {
+.bd-ball,
+.bd-shadow,
+.bd-fx { transition-duration: 700ms; transition-timing-function: cubic-bezier(0.3, 0.8, 0.25, 1); }
+
+.bd-ball {
   position: absolute;
-  left: -3%;
-  right: -3%;
-  top: 92cqw;
-  bottom: -2px;
-  border-radius: 53cqw 53cqw 0 0;
-  background: var(--lilac);
+  left: calc((var(--bx) - var(--br)) * 1cqw);
+  top: calc((var(--by) - var(--br)) * 1cqw);
+  width: calc(var(--br) * 2cqw);
+  aspect-ratio: 1;
+  container-type: inline-size;
+  transition-property: left, top, width;
 }
 
-.bd-layer,
+.bd-ball svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.bd-curls { fill: var(--lilac); }
+.bd-curls g { visibility: hidden; }
+.buddy[data-f="0"] .bd-f0,
+.buddy[data-f="1"] .bd-f1,
+.buddy[data-f="2"] .bd-f2 { visibility: visible; }
+.bd-dots { fill: #fff; opacity: 0.5; }
+
+.bd-shadow {
+  position: absolute;
+  left: calc((var(--bx) - var(--sw)) * 1cqw);
+  top: calc((var(--sy) - var(--sw) * 0.075) * 1cqw);
+  width: calc(var(--sw) * 2cqw);
+  height: calc(var(--sw) * 0.15cqw);
+  border-radius: 50%;
+  background: rgba(43, 31, 74, 0.16);
+  transition-property: left, top, width, height, opacity;
+}
+
+.home.focus .bd-shadow { opacity: 0; }
+
+/* הפנים והפתק מצוירים בעמודה ברוחב 100, עם העיניים ב-(55, 120.4) ופנים ברוחב 81.
+   השכבה כולה מוזזת ומוגדלת כך שהעיניים יהיו בגובה fy, במרכז הכדור, והפנים ברוחב fw */
+.bd-fx {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100cqw;
+  height: 174cqw;
+  transform-origin: 0 0;
+  transform:
+    translate(calc((var(--bx) - 55 * var(--fw) / 81) * 1cqw), calc((var(--fy) - 120.4 * var(--fw) / 81) * 1cqw))
+    scale(calc(var(--fw) / 81));
+  transition-property: transform;
+}
+
 .bd-notes {
   position: absolute;
+  z-index: 2;
   left: 0;
   top: 0;
   width: 100cqw;
@@ -202,8 +264,6 @@ html.reading body::after { display: none; }
   overflow: visible;
 }
 
-.bd-bumps circle { fill: var(--lilac); }
-.bd-notes { z-index: 2; }
 .bd-notes .note-g { opacity: 0; transform-box: view-box; transform-origin: 49px 141px; }
 
 .bd-face {
@@ -225,7 +285,7 @@ html.reading body::after { display: none; }
 .bd-face .tiltg { transform-box: fill-box; transform-origin: 50% 100%; }
 .bd-face .tiltg { transition: transform 500ms ease-in-out; }
 
-/* בועות רעיונות: לבנות, עם אימוג'י, קופצות מהצדדים */
+/* בועות רעיונות: לבנות, עם אימוג'י, קופצות מהצדדים של הכדור. היחידות שלהן הן אחוז מרוחב הכדור */
 .bd-think { position: absolute; z-index: 3; aspect-ratio: 100 / 90; transform: scale(0); }
 .bd-think svg {
   position: absolute;
@@ -233,7 +293,7 @@ html.reading body::after { display: none; }
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 1cqw 1.4cqw rgba(43, 31, 74, 0.12));
+  filter: drop-shadow(0 1.6cqw 2.2cqw rgba(43, 31, 74, 0.12));
 }
 .bd-think .emo { position: absolute; left: 0; right: 0; display: block; text-align: center; line-height: 1; transform: scale(0); }
 
@@ -242,18 +302,18 @@ html.reading body::after { display: none; }
   @keyframes breathe { 50% { transform: translateY(-0.8cqw); } }
 }
 
-/* כל הגוף הוא כפתור: נגיעה בו מתחילה הקלטה */
+/* הכדור הוא כפתור: נגיעה בו מתחילה הקלטה */
 .topic-form .buddy-btn {
   position: absolute;
   z-index: 4;
-  left: 6%;
-  right: 6%;
-  top: 84cqw;
-  height: 84cqw;
+  left: calc((var(--bx) - var(--br)) * 1cqw);
+  top: calc((var(--by) - var(--br)) * 1cqw);
+  width: calc(var(--br) * 2cqw);
+  height: calc(var(--br) * 2cqw);
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 42cqw 42cqw 0 0;
+  border-radius: 50%;
   background: transparent;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -263,16 +323,16 @@ html.reading body::after { display: none; }
   touch-action: none;
 }
 
-.topic-form .buddy-btn:focus-visible { outline: 4px solid var(--plum); outline-offset: -10px; }
+.topic-form .buddy-btn:focus-visible { outline: 4px solid var(--plum); outline-offset: 4px; }
 .topic-form .buddy-btn:disabled { cursor: default; }
 
-/* כן ולא: בועות לבנות משני צדי הראש */
+/* כן ולא: בועות לבנות משני צדי הפנים */
 .topic-form .answer {
   position: absolute;
   z-index: 5;
-  top: 100cqw;
-  width: 19cqw;
-  height: 19cqw;
+  top: var(--ay, 58cqw);
+  width: var(--as, 19cqw);
+  height: var(--as, 19cqw);
   display: grid;
   place-items: center;
   margin: 0;
@@ -280,7 +340,7 @@ html.reading body::after { display: none; }
   border: 0;
   border-radius: 50%;
   background: #fff;
-  font-size: 11cqw;
+  font-size: calc(var(--as, 19cqw) * 0.58);
   line-height: 1;
   cursor: pointer;
   box-shadow: 0 1.2cqw 2.4cqw rgba(43, 31, 74, 0.16);
@@ -289,19 +349,19 @@ html.reading body::after { display: none; }
 .topic-form .answer::after {
   content: "";
   position: absolute;
-  bottom: 0.6cqw;
-  width: 5cqw;
-  height: 5cqw;
+  bottom: 3%;
+  width: 26%;
+  height: 26%;
   background: #fff;
-  border-radius: 0.8cqw;
+  border-radius: 4%;
   transform: rotate(45deg);
   z-index: -1;
 }
 
-.topic-form .answer-yes { right: 13cqw; }
-.topic-form .answer-yes::after { left: 1.5cqw; }
-.topic-form .answer-no { left: 13cqw; }
-.topic-form .answer-no::after { right: 1.5cqw; }
+.topic-form .answer-yes { right: var(--ax, 9cqw); }
+.topic-form .answer-yes::after { left: 8%; }
+.topic-form .answer-no { left: var(--ax, 9cqw); }
+.topic-form .answer-no::after { right: 8%; }
 .topic-form .answer:active { transform: scale(0.92); }
 .topic-form .answer:focus-visible { outline: 4px solid var(--plum); outline-offset: 3px; }
 
@@ -313,15 +373,26 @@ html.reading body::after { display: none; }
 
 .heard { display: none; }
 
+/* הודעות, ביטול והקלדה: בתחתית המסך, מעל הכדור או הספרייה */
+.note,
+.topic-form .cancel-btn,
+.type-ui {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .note {
-  position: absolute;
-  z-index: 5;
-  left: 8cqw;
-  right: 8cqw;
-  top: 156cqw;
+  z-index: 6;
+  bottom: calc(env(safe-area-inset-bottom) + 76px);
+  width: min(84cqw, 90vw);
   margin: 0;
+  padding: 10px 18px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(43, 31, 74, 0.14);
   color: var(--plum);
-  font-size: 4.2cqw;
+  font-size: clamp(16px, 4.2cqw, 22px);
   font-weight: 700;
   line-height: 1.3;
   text-align: center;
@@ -331,10 +402,8 @@ html.reading body::after { display: none; }
 .note:empty { display: none; }
 
 .topic-form .cancel-btn {
-  position: absolute;
-  z-index: 5;
-  left: 50%;
-  top: 164cqw;
+  z-index: 6;
+  bottom: calc(env(safe-area-inset-bottom) + 16px);
   min-height: 44px;
   margin: 0;
   padding: 0 20px;
@@ -342,19 +411,16 @@ html.reading body::after { display: none; }
   background: transparent;
   color: var(--plum);
   font: inherit;
-  font-size: 4cqw;
+  font-size: clamp(16px, 4cqw, 22px);
   text-decoration: underline;
   cursor: pointer;
-  transform: translateX(-50%);
 }
 
 /* הקלדה, רק במכשיר בלי מיקרופון */
 .type-ui {
-  position: absolute;
   z-index: 6;
-  left: 6cqw;
-  right: 6cqw;
-  top: 140cqw;
+  bottom: calc(env(safe-area-inset-bottom) + 16px);
+  width: min(88cqw, 92vw);
   display: flex;
   flex-direction: column;
   gap: 2cqw;
@@ -391,22 +457,31 @@ html.reading body::after { display: none; }
   cursor: pointer;
 }
 
-/* זום אין בזמן שיחה וכתיבה: הדמות קרובה יותר והספרייה יוצאת מהפריים */
-.home.focus .home-col { transform: scale(1.32); }
 .home.focus .home-scroll { overflow: hidden; }
-.glib > * { transition: opacity 400ms ease; }
-.home.focus .glib > * { opacity: 0; }
 
-/* מדף הספרים */
+/* מדף הספרים: לוח לבן עם פינות עגולות, מקצה לקצה של המסך גם כשהעמודה צרה ממנו */
 .library {
   position: relative;
+  isolation: isolate;
   flex: 1;
-  margin-top: -1px;
-  padding: 5cqw 5cqw calc(10cqw + env(safe-area-inset-bottom) + (100lvh - 100dvh));
-  background: var(--lilac);
-  box-shadow: 0 0 0 100vmax var(--lilac);
-  clip-path: inset(0 -100vmax);
+  padding: 32.94cqw 6.15cqw calc(10cqw + env(safe-area-inset-bottom) + (100lvh - 100dvh));
+  transition: transform 700ms cubic-bezier(0.3, 0.8, 0.25, 1);
 }
+
+.library::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 50vw);
+  right: calc(50% - 50vw);
+  border-radius: 8.72cqw 8.72cqw 0 0;
+  background: #fff;
+}
+
+.home.focus .library,
+.home.focus .home-stage::before { transform: translateY(133cqw); }
 
 /* שורה ראשונה: כותרת ובחירה. שורה שנייה: סידור ותצוגה.
    במסך רחב הכול נכנס לשורה אחת. אף כפתור לא נשבר לשורה משלו */
@@ -424,7 +499,7 @@ html.reading body::after { display: none; }
 .library-bar h2 {
   grid-area: title;
   margin: 0;
-  font-size: clamp(22px, 6.4cqw, 34px);
+  font-size: clamp(20px, 5.64cqw, 34px);
   font-weight: 900;
 }
 
@@ -557,7 +632,7 @@ html.reading body::after { display: none; }
   gap: 14px;
 }
 
-.story-list.grid { grid-template-columns: 1fr 1fr; gap: 4cqw; }
+.story-list.grid { grid-template-columns: 1fr 1fr; gap: 4.1cqw; }
 .story-list.list { grid-template-columns: 1fr; gap: 10px; }
 
 .story-item {
@@ -565,7 +640,7 @@ html.reading body::after { display: none; }
   width: 100%;
   border: 0;
   border-radius: 6cqw;
-  background: #fff;
+  background: #f7f3fb;
   color: var(--plum);
   font: inherit;
   cursor: pointer;
@@ -580,12 +655,12 @@ html.reading body::after { display: none; }
   flex-direction: column;
   padding: 0;
   overflow: hidden;
-  box-shadow: 0 1.4cqw 0 rgba(150, 40, 90, 0.14);
+  box-shadow: 0 1cqw 0 rgba(43, 31, 74, 0.08);
 }
 
 .list .story-item {
   display: flex;
-  box-shadow: 0 1cqw 0 rgba(150, 40, 90, 0.12);
+  box-shadow: 0 1cqw 0 rgba(43, 31, 74, 0.08);
   align-items: center;
   gap: 16px;
   min-height: 72px;
@@ -639,6 +714,83 @@ html.reading body::after { display: none; }
 
 .story-item[aria-pressed="true"] .story-check {
   background: var(--night) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 20px no-repeat;
+}
+
+/* טאבלט לרוחב: לוח לבן עם הספרייה בשני השלישים השמאליים, והשם והדמות בשליש הימני.
+   בזמן כתיבה הלוח יוצא שמאלה והדמות גדלה במרכז. המידות ביחידות של מסך ברוחב 1180 */
+@media (orientation: landscape) and (min-width: 900px) {
+  html { background-image: none; }
+  body::after { background: var(--cream); }
+  .home-scroll { overflow: hidden; }
+  .home-col { width: 100%; height: 100%; }
+
+  .home-stage,
+  .home:not(.has-library) .home-stage {
+    --tx: 80.93;
+    --ly: 10.61;
+    --lf: 2.46;
+    --lw: 34cqw;
+    --ny: 12.74;
+    --nf: 8.81;
+    --bx: 80.93;
+    --by: 41.53;
+    --br: 14.24;
+    --fy: 35.42;
+    --fw: 37.02;
+    --sy: 56.27;
+    --sw: 14.41;
+    --ay: 18cqw;
+    --ax: 22cqw;
+    --as: 8cqw;
+    position: absolute;
+    inset: 0;
+    height: auto;
+  }
+
+  /* בלי סיפורים אין לוח, והדמות עוברת למרכז */
+  .home:not(.has-library) .home-stage { --tx: 50; --bx: 50; --lw: 60cqw; }
+
+  .home.focus .home-stage {
+    --tx: 50;
+    --ly: 8.3;
+    --lf: 5.42;
+    --lw: 70cqw;
+    --bx: 50;
+    --by: 62.54;
+    --br: 35.51;
+    --fy: 33.73;
+    --fw: 48.41;
+  }
+
+  .home-stage::before { display: none; }
+
+  .library {
+    position: absolute;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 61.86cqw;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    padding: 3.82cqw 4.24cqw 4cqw 5.08cqw;
+    border-radius: 0 3.05cqw 3.05cqw 0;
+    background: #fff;
+  }
+
+  .library::-webkit-scrollbar { display: none; }
+  .library::before { display: none; }
+  .home.focus .library { transform: translateX(-105%); }
+
+  .library-bar h2 { font-size: 2.2cqw; }
+  .story-list.grid { grid-template-columns: repeat(3, 1fr); gap: 2.5cqw 2.12cqw; }
+  .story-item { border-radius: 1.9cqw; }
+  .grid .story-item { box-shadow: 0 0.4cqw 0 rgba(43, 31, 74, 0.08); }
+  .grid .story-emoji { font-size: 5.8cqw; }
+  .grid .story-name { padding: 0.9cqw 1cqw 1.1cqw; font-size: 15px; }
+  .note { width: min(40cqw, 90vw); }
+  .type-ui { width: min(40cqw, 92vw); }
 }
 
 /* הספר */

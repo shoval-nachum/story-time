@@ -651,6 +651,7 @@ function setKoala(state, label) {
   const focus = state !== "idle";
   if (focus && !home.classList.contains("focus")) homeScroll.scrollTo({ top: 0, behavior: "smooth" });
   home.classList.toggle("focus", focus);
+  document.documentElement.classList.toggle("focus", focus);
   window.Buddy?.set(state);
   const text = label ?? (state === "asking" && dictation.text ? READ_BACK(dictation.text) : LABELS[state]);
   lineLocked = !!text;
