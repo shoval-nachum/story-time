@@ -19,20 +19,21 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: linear-gradient(var(--cream) 0 70%, var(--lilac) 70%) fixed;
-  background-color: var(--cream);
+  background: transparent;
   color: var(--ink);
   font-family: var(--font);
   overscroll-behavior: none;
   -webkit-text-size-adjust: 100%;
 }
 
-/* באפליקציה ממסך הבית iOS מקצר את אזור הדף בגובה שורת השעה ומשאיר פער למטה. הרקע נשאר קרם,
-   כי לפיו iOS צובע את האזור המטושטש מאחורי השעה. במקום זה דף הבית יורד אל תוך הפער,
-   בשוליים קצת גדולים מגובה שורת השעה, והספרייה מקבלת ריווח תואם בסוף */
-@media (display-mode: standalone) {
-  .home { bottom: calc(-1 * (env(safe-area-inset-top, 0px) + 16px)); }
-  .library { padding-bottom: calc(10cqw + env(safe-area-inset-bottom) + env(safe-area-inset-top, 0px) + 16px); }
+/* רקע העמוד: צבע הבסיס קרם, כי לפיו iOS וספארי צובעים את האזור שמאחורי השעה.
+   מעליו תמונת רקע בגובה שני מסכים: קרם עד 70% מהמסך ולילך משם. רקע העמוד מצויר על כל החלון,
+   גם בפער ש-iOS משאיר למטה באפליקציה ממסך הבית ומאחורי סרגל הכתובת, ושם רואים את הלילך */
+html {
+  background-color: var(--cream);
+  background-image: linear-gradient(var(--cream) 0 35%, var(--lilac) 35%);
+  background-size: 100% 200%;
+  background-repeat: no-repeat;
 }
 
 html.reading, html.reading body { background: var(--paper); }
