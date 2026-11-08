@@ -818,7 +818,10 @@ async function openMicrophone() {
     });
   } catch (error) {
     console.error("microphone", error);
-    note.textContent = "צריך לאשר גישה למיקרופון כדי לספר לי על הסיפור.";
+    // רק סירוב אמיתי מבקש אישור. שגיאה אחרת (מיקרופון תפוס, לא נמצא) מקבלת הודעה משלה
+    note.textContent = error?.name === "NotAllowedError"
+      ? "צריך לאשר גישה למיקרופון כדי לספר לי על הסיפור."
+      : "המיקרופון לא נפתח. נסו שוב עוד רגע.";
     return false;
   }
   return true;

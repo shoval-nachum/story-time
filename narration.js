@@ -103,10 +103,8 @@ window.speechPlayer = (() => {
 
   function context() {
     if (!ctx) {
-      // באייפון, Web Audio מושתק כשהמתג בצד על שקט. "playback" משמיע בכל מקרה
-      try {
-        if (navigator.audioSession) navigator.audioSession.type = "playback";
-      } catch {}
+      // לא קובעים כאן navigator.audioSession.type = "playback": זה חוסם את המיקרופון בספארי ובאפליקציה.
+      // בזמן השיחה המיקרופון פתוח, ואז הקול נשמע גם כשהמתג בצד על שקט
       ctx = new (window.AudioContext || window.webkitAudioContext)();
     }
     return ctx;
