@@ -3,8 +3,8 @@
 /* הגדרות ההקראה. משנים אותן במעבדת הקול (voice-lab.html).
    הערכים כאן הם ברירת המחדל לכל המכשירים. מה שנשמר במעבדה חל רק על המכשיר שבו נשמר */
 window.NARRATION_DEFAULTS = {
-  speed: 0.85, // קצב הקול: 0.7 עד 1.2 (ב-Gemini הופך להוראה במילים: לאט, רגוע, טבעי, מהיר)
-  stability: 0.5, // הבעה: 0 משחקת את הדמויות, 0.5 חמה, 1 שקטה ומרגיעה
+  speed: 1, // קצב הקול: 0.7 עד 1.2 (ב-Gemini הופך להוראה במילים: לאט, רגוע, טבעי, מהיר)
+  stability: 0.2, // הבעה: 0 משחקת את הדמויות, 0.5 חמה, 1 שקטה ומרגיעה. 1 ו-0.2 נבחרו בהאזנה (דוגמה 5, 8 בנובמבר 2026)
   sentenceGap: 700, // שקט בין משפטים, באלפיות שנייה
   pageGap: 1000, // שקט בין שני העמודים של כפולה
   turnDelay: 1500, // שקט בסוף העמודים, לפני שהספר מדפדף לבד
@@ -148,8 +148,62 @@ window.speechPlayer = (() => {
     return buffer;
   }
 
-  /* אומר משפט ומחכה עד שנגמר. נזרקת שגיאה אם ההקראה נכשלה */
-  async function say(text, settings) {
+  /* מבקש קול למשפט. use: "chat" הוא הקול המהיר של השיחה */
+  function request(text, settings, signal) {
+    return fetch(window.STORY_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: window.STORY_API_KEY },
+      body: JSON.stringify({
+        action: "speak",
+        stream: true,
+        text,
+        voice: { speed: settings.speed, stability: settings.stability, use: "chat" },
+      }),
+      signal,
+    });
+  }
+
+  /* משפטים קבועים (כמו "וואו!") נשמרים גם כאן, כדי שיתנגנו מיד בלי לפנות לשרת */
+  const saved = new Map();
+
+  /* מנגן תשובה אחת אחרי הנקודה at, ומחזיר מתי היא נגמרת */
+  async function playResponse(response, at, mine) {
+    const c = context();
+    const type = response.headers.get("content-type") || "";
+    if (!response.ok || !type.startsWith("audio/")) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "speech_failed");
+    }
+    if (type.startsWith("audio/wav")) {
+      const buffer = await c.decodeAudioData(await response.arrayBuffer());
+      if (mine !== run) return null;
+      return { end: schedule(buffer, at), buffer };
+    }
+    const reader = response.body.getReader();
+    let rest = new Uint8Array(0);
+    let next = at;
+    let first = true;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (mine !== run) return null;
+      if (done) break;
+      const bytes = new Uint8Array(rest.length + value.length);
+      bytes.set(rest);
+      bytes.set(value, rest.length);
+      const even = bytes.length & ~1;
+      rest = bytes.slice(even);
+      if (!even) continue;
+      if (first) next = Math.max(next, c.currentTime + LEAD);
+      first = false;
+      next = schedule(pcmBuffer(bytes.slice(0, even)), next);
+    }
+    return { end: next };
+  }
+
+  /* אומר משפט, או כמה משפטים ברצף, ומחכה עד שנגמרו. כל המשפטים מתבקשים מיד ובמקביל,
+     כך שבזמן ש"וואו!" מתנגן, המשפט הבא כבר נוצר. נזרקת שגיאה אם ההקראה נכשלה */
+  async function say(texts, settings, { remember = [] } = {}) {
+    const list = Array.isArray(texts) ? texts : [texts];
     stop();
     const mine = run;
     const c = context();
@@ -158,50 +212,47 @@ window.speechPlayer = (() => {
       await Promise.race([c.resume().catch(() => {}), new Promise((resolve) => setTimeout(resolve, 300))]);
     }
     controller = new AbortController();
-    const response = await fetch(window.STORY_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: window.STORY_API_KEY },
-      body: JSON.stringify({
-        action: "speak",
-        stream: true,
-        text,
-        voice: { speed: settings.speed, stability: settings.stability },
-      }),
-      signal: controller.signal,
-    });
-    const type = response.headers.get("content-type") || "";
-    if (!response.ok || !type.startsWith("audio/")) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || "speech_failed");
-    }
-    let end = 0;
-    if (type.startsWith("audio/wav")) {
-      const buffer = await c.decodeAudioData(await response.arrayBuffer());
+    const signal = controller.signal;
+    const key = (text) => `${settings.speed}|${settings.stability}|${text}`;
+    const pending = list.map((text) => (saved.has(key(text)) ? null : request(text, settings, signal)));
+    pending.forEach((request) => request?.catch(() => {}));
+    let at = c.currentTime + 0.02;
+    for (const [i, text] of list.entries()) {
       if (mine !== run) return;
-      end = schedule(buffer, c.currentTime + 0.02);
-    } else {
-      const reader = response.body.getReader();
-      let rest = new Uint8Array(0);
-      let at = 0;
-      while (true) {
-        const { value, done } = await reader.read();
-        if (mine !== run) return;
-        if (done) break;
-        const bytes = new Uint8Array(rest.length + value.length);
-        bytes.set(rest);
-        bytes.set(value, rest.length);
-        const even = bytes.length & ~1;
-        rest = bytes.slice(even);
-        if (!even) continue;
-        if (!at) at = c.currentTime + LEAD;
-        at = schedule(pcmBuffer(bytes.slice(0, even)), at);
+      const buffer = saved.get(key(text));
+      if (buffer) {
+        at = schedule(buffer, Math.max(at, c.currentTime + 0.02));
+        continue;
       }
-      end = at;
+      const played = await playResponse(await pending[i], at, mine);
+      if (!played) return;
+      at = played.end;
+      if (played.buffer && remember.includes(text)) saved.set(key(text), played.buffer);
     }
     controller = null;
-    const wait = Math.max(0, end - c.currentTime);
+    const wait = Math.max(0, at - c.currentTime);
     await new Promise((resolve) => setTimeout(resolve, wait * 1000 + 50));
   }
 
-  return { unlock, stop, say };
+  /* מכין מראש משפטים קבועים, בשקט: נשמרים בשרת וכאן, ומתנגנים מיד כשצריך אותם */
+  async function warm(texts, settings) {
+    for (const text of texts) {
+      const k = `${settings.speed}|${settings.stability}|${text}`;
+      if (saved.has(k)) continue;
+      try {
+        let response = await request(text, settings);
+        // משפט חדש מגיע בזרם ונשמר בשרת בסוף. מבקשים שוב כדי לקבל את הקובץ השמור
+        if (!(response.headers.get("content-type") || "").startsWith("audio/wav")) {
+          await response.arrayBuffer();
+          response = await request(text, settings);
+        }
+        if (!(response.headers.get("content-type") || "").startsWith("audio/wav")) continue;
+        saved.set(k, await context().decodeAudioData(await response.arrayBuffer()));
+      } catch (error) {
+        console.error("warm voice", error);
+      }
+    }
+  }
+
+  return { unlock, stop, say, warm };
 })();

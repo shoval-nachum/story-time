@@ -139,8 +139,11 @@ function setWaiting(on) {
 }
 
 /* הסיפור נכתב בזרם. כל חלק שמגיע נערך ומנוקד, לפי הסדר,
-   והספר נפתח כשהכותרת והעמוד הראשון מוכנים. השאר מתמלא בזמן הקריאה */
-async function createStory(topic) {
+   והספר נפתח כשהכותרת והעמוד הראשון מוכנים. השאר מתמלא בזמן הקריאה.
+   speculative: מתחילים לכתוב עוד לפני שהילדה אישרה את הרעיון. כלום לא מוצג עד commit(),
+   ואם היא אומרת "לא", הכתיבה נעצרת (גם בשרת) */
+async function createStory(topic, { speculative = false } = {}) {
+  cancelSpeculation();
   const controller = new AbortController();
   const { signal } = controller;
   const draft = { title: null, emoji: "", pages: [], error: null, waiters: [] };
@@ -155,14 +158,32 @@ async function createStory(topic) {
       check();
     });
 
-  job = { controller };
-  setWaiting(true);
-  note.textContent = WAIT_STATUS;
+  let confirm;
+  const confirmed = new Promise((resolve) => (confirm = resolve));
+  const thisJob = { controller, topic, speculative, committed: false };
+  let announced = false;
+  /* הדמות מכריזה על שם הסיפור ברגע שיש שם ושהילדה אישרה, כדי שההמתנה לא תהיה שקטה */
+  const announce = () => {
+    if (announced || !thisJob.committed || !draft.title || !reader.hidden) return;
+    announced = true;
+    koalaSays(`הסיפור שלנו נקרא: ${draft.title}`);
+  };
+  thisJob.commit = () => {
+    if (thisJob.committed || signal.aborted) return;
+    thisJob.committed = true;
+    setWaiting(true);
+    note.textContent = WAIT_STATUS;
+    announce();
+    confirm();
+  };
+  job = thisJob;
+  if (!speculative) thisJob.commit();
 
   const writing = streamWrite(topic, signal, (message) => {
     if (message.title !== undefined) {
       draft.title = message.title;
       draft.emoji = message.emoji || "";
+      announce();
     }
     if (message.lines) draft.pages[message.page] = message.lines;
     wake();
@@ -175,6 +196,15 @@ async function createStory(topic) {
 
   try {
     const book = emptyBook();
+    let opened = false;
+    const open = () => {
+      if (opened || signal.aborted) return;
+      opened = true;
+      pages = book;
+      setWaiting(false);
+      resetForm();
+      openBook();
+    };
     for (const [from, to] of PARTS) {
       await waitForPages(to);
       const part = await finishPart(
@@ -186,25 +216,29 @@ async function createStory(topic) {
         book[from + k + 1] = bookPage(page.lines, from + k);
       });
       // מקריאים מראש כל עמוד ברגע שהוא מוכן, כדי שההקראה תתחיל מיד כשפותחים אותו
-      narration.prepare(book.slice(from + 1, to + 1));
-      if (from === 0) {
-        pages = book;
-        setWaiting(false);
-        resetForm();
-        openBook();
-      } else {
-        refreshBook();
-      }
+      if (thisJob.committed) narration.prepare(book.slice(from + 1, to + 1));
+      // הספר נפתח רק אחרי האישור. עד אז החלקים ממשיכים להיכתב ברקע
+      if (from === 0) confirmed.then(() => {
+        narration.prepare(book.slice(1));
+        open();
+      });
+      else if (opened) refreshBook();
     }
     await writing;
-    job = null;
+    await confirmed;
+    if (job === thisJob) job = null;
     saveStory({
       title: book[0].lines[0],
       emoji: draft.emoji,
       pages: book.slice(1, PAGE_COUNT + 1).map((page) => page.lines),
     });
   } catch (error) {
-    job = null;
+    if (job === thisJob) job = null;
+    if (!thisJob.committed) {
+      // כתיבה מוקדמת שבוטלה או נכשלה: אף אחד לא ראה אותה. אם הילדה תאשר, נכתוב מחדש
+      if (!signal.aborted) console.error("early writing", error);
+      return;
+    }
     setWaiting(false);
     if (signal.aborted) {
       resetForm();
@@ -214,6 +248,19 @@ async function createStory(topic) {
     console.error(error);
     if (!reader.hidden) closeBook();
     note.textContent = ERROR_TEXT[error.message] || GENERIC_ERROR;
+  }
+}
+
+/* כתיבה מוקדמת: מתחילה ברגע שיש רעיון, ונעצרת אם הרעיון משתנה או נדחה */
+function speculate(idea) {
+  if (!window.STORY_API_URL) return;
+  createStory(idea, { speculative: true });
+}
+
+function cancelSpeculation() {
+  if (job?.speculative && !job.committed) {
+    job.controller.abort();
+    job = null;
   }
 }
 
@@ -240,6 +287,7 @@ document.getElementById("topic-form").addEventListener("submit", (event) => {
 document.getElementById("home-btn").addEventListener("click", closeBook);
 
 function openBook() {
+  stopKoalaVoice();
   home.hidden = true;
   reader.hidden = false;
   document.getElementById("theme-color").content = "#ffffff";
@@ -720,20 +768,40 @@ const noBtn = document.getElementById("no-btn");
 const typeUi = document.getElementById("type-ui");
 
 const MAX_RECORDING_MS = 30_000;
-const SILENCE_MS = 2000; // שתיקה אחרי דיבור שמסיימת את ההקלטה
+const SILENCE_MS = 1500; // שתיקה אחרי דיבור שמסיימת את ההקלטה (היה 2000; אם מיה נקטעת באמצע מחשבה, להחזיר)
 const NO_SPEECH_MS = 7000; // אם לא נשמע כלום, מוותרים
 const TAP_MS = 450;
 const STREAM_IDLE_MS = 60_000; // המיקרופון נסגר אם לא משתמשים בו
 const SHAKE_MS = 700;
 
-const READ_BACK = (text) => `רצית סיפור על ${text}?`;
-const ASK_AGAIN = "אוי, לא הבנתי. ספרו לי שוב, לאט ובקול ברור.";
+const READ_BACK = (idea) => `רצית סיפור על ${idea}?`;
+/* תגובה קצרה לפני שהדמות חוזרת על הרעיון. מתחלפת בכל פעם, ונשמרת מראש כדי להתנגן מיד */
+const REACTIONS = [
+  "וואו! רעיון מגניב!",
+  "איזה רעיון!",
+  "אוהו, זה נשמע מעולה!",
+  "יש! אני אוהבת את זה!",
+  "רעיון נהדר!",
+  "מגניב! אני כבר מתרגשת!",
+  "איזה כיף של רעיון!",
+];
+/* אחרי תיקון: הדמות מראה שהפעם הבינה */
+const UNDERSTOOD = ["אה, עכשיו הבנתי!", "אהה, סליחה! עכשיו זה ברור.", "אוקיי, תיקנתי!"];
+/* אחרי "לא": הדמות כנראה פספסה משהו, ומבקשת הסבר. אפשר לתקן רק חלק ("לא דגים! בגדים!") */
+const ASK_AGAIN = "אופס! נראה לי שלא הבנתי משהו. תסבירי לי מה התכוונת?";
+const lastPick = new Map();
+function pick(list) {
+  let i = Math.floor(Math.random() * list.length);
+  if (list.length > 1 && i === lastPick.get(list)) i = (i + 1) % list.length;
+  lastPick.set(list, i);
+  return list[i];
+}
 const LABELS = {
   idle: "",
   listening: "אני מקשיבה…",
   thinking: "רגע, אני רושמת…",
   asking: "",
-  shaking: "אוי, לא הבנתי. ספרי לי שוב",
+  shaking: "אופס, לא הבנתי משהו. תסבירי לי?",
   writing: "",
 };
 /* משפט קטן מעל השם, שמתחלף כשהדמות מחכה */
@@ -753,7 +821,9 @@ const dictation = {
   busy: false,
   idleTimer: null,
   text: "",
-  seed: "",
+  reaction: "",
+  /* הרעיון הקודם, כשהילדה מתקנת אותו (correct), מוסיפה לרעיון מוכן (extend) או מדברת שוב (more) */
+  about: null,
 };
 const koalaVoice = new Audio();
 /* עוצר את הקול של הדמות, גם אם הוא מגיע בזרם */
@@ -777,7 +847,10 @@ function setLine(text) {
 
 function setKoala(state, label) {
   koalaStage.dataset.state = state;
-  if (state === "idle") dictation.seed = "";
+  if (state === "idle") {
+    dictation.about = null;
+    cancelSpeculation();
+  }
   const confirming = state === "asking" && !!dictation.text && dictation.confirm;
   yesBtn.hidden = !confirming;
   noBtn.hidden = !confirming;
@@ -792,7 +865,8 @@ function setKoala(state, label) {
   home.classList.toggle("focus", focus);
   document.documentElement.classList.toggle("focus", focus);
   window.Buddy?.set(state);
-  const text = label ?? (state === "asking" && dictation.text ? READ_BACK(dictation.text) : LABELS[state]);
+  const readBack = dictation.text ? `${dictation.reaction ? `${dictation.reaction} ` : ""}${READ_BACK(dictation.text)}` : "";
+  const text = label ?? (state === "asking" && readBack ? readBack : LABELS[state]);
   lineLocked = !!text;
   setLine(text || IDLE_LINES[idleLine]);
 }
@@ -887,8 +961,13 @@ async function startListening() {
     dictation.unlocked = true;
     koalaVoice.src = SILENCE;
     koalaVoice.play().catch(() => {});
+    // התגובות הקבועות נטענות ברקע, כדי שיתנגנו מיד כשהילדה מסיימת לדבר
+    window.speechPlayer.warm([...REACTIONS, ...UNDERSTOOD], window.narrationSettings());
   }
   window.speechPlayer.unlock();
+  // אם כבר יש רעיון שמחכה לאישור והילדה מדברת שוב, היא כנראה מתקנת או מוסיפה
+  if (!dictation.about && dictation.text) dictation.about = { idea: dictation.text, why: "more" };
+  cancelSpeculation();
   const ready = await openMicrophone();
   dictation.starting = false;
   if (!ready) {
@@ -928,6 +1007,7 @@ function stopListening() {
 }
 
 function cancelDictation() {
+  cancelSpeculation();
   if (dictation.recorder) {
     dictation.cancelled = true;
     stopListening();
@@ -961,31 +1041,43 @@ async function finishListening(type, reason) {
   }
   dictation.busy = true;
   setKoala("thinking");
+  const about = dictation.about;
   try {
+    /* השרת מתמלל ומסכם את הרעיון בקריאה אחת. כשיש רעיון קודם, הוא מצורף כדי שתיקון חלקי יעבוד */
     const response = await fetch(window.STORY_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: window.STORY_API_KEY },
-      body: JSON.stringify({ action: "transcribe", audio: await toBase64(blob), type: blob.type }),
+      body: JSON.stringify({
+        action: "transcribe",
+        audio: await toBase64(blob),
+        type: blob.type,
+        ...(about ? { context: about } : {}),
+      }),
     });
     const data = await response.json();
     if (data.error) throw new Error(data.error);
-    let text = (data.text || "").trim();
-    if (text && dictation.seed) text = `${dictation.seed}, ${text}`;
-    dictation.seed = "";
-    if (!text) {
+    // הרעיון נכנס ל"רצית סיפור על ___?", אז בלי "סיפור על" כפול ובלי נקודה בסוף (גם השרת מנקה, ליתר ביטחון)
+    let idea = (data.idea || "").trim().replace(/^(סיפור\s+)?על\s+/, "").replace(/[\s.,!?;:…]+$/, "");
+    const heardText = (data.text || "").trim().replace(/[\s.,!?…]+$/, "");
+    if (!idea && heardText) idea = about?.why === "extend" ? `${about.idea}, ${heardText}` : heardText;
+    dictation.about = null;
+    if (!idea) {
       closeMicrophoneLater();
       setKoala("idle", NOT_HEARD);
       return;
     }
-    dictation.text = text;
-    topicInput.value = text;
+    dictation.text = idea;
+    dictation.reaction = pick(about?.why === "correct" ? UNDERSTOOD : REACTIONS);
+    topicInput.value = idea;
     try {
-      localStorage.setItem(DRAFT_KEY, text);
+      localStorage.setItem(DRAFT_KEY, idea);
     } catch {}
-    /* הקואלה שואלת, ורק אחרי שסיימה לשאול הבועות מופיעות */
+    // הסיפור מתחיל להיכתב כבר עכשיו. אם הילדה תאשר, הוא יהיה מוכן מוקדם יותר
+    speculate(idea);
+    /* התגובה ("וואו!") שמורה ומתנגנת מיד, ובזמן הזה השאלה כבר נוצרת. הבועות מופיעות בסוף */
     setKoala("asking");
-    await koalaSays(READ_BACK(text));
-    if (dictation.text !== text) return;
+    await koalaSays([dictation.reaction, READ_BACK(idea)], [dictation.reaction]);
+    if (dictation.text !== idea) return;
     dictation.confirm = true;
     setKoala("asking");
     closeMicrophoneLater();
@@ -998,12 +1090,13 @@ async function finishListening(type, reason) {
   }
 }
 
-/* הקואלה מדברת, ומחכים עד שסיימה. אם הקול לא נטען, ממשיכים בלי לחכות */
-async function koalaSays(text) {
+/* הקואלה מדברת, ומחכים עד שסיימה. אפשר כמה משפטים ברצף. remember: משפטים קבועים לשמור לפעם הבאה.
+   אם הקול לא נטען, ממשיכים בלי לחכות */
+async function koalaSays(texts, remember = []) {
   try {
-    await window.speechPlayer.say(text, window.narrationSettings());
+    await window.speechPlayer.say(texts, window.narrationSettings(), { remember });
   } catch (error) {
-    console.error("koala voice", error);
+    if (error?.name !== "AbortError") console.error("koala voice", error);
   }
 }
 
@@ -1014,11 +1107,13 @@ function startIdea(name) {
   closeMore();
   stopKoalaVoice();
   window.speechPlayer.unlock();
-  dictation.seed = name;
   dictation.text = name;
+  dictation.reaction = "";
   dictation.confirm = false;
   topicInput.value = name;
   setKoala("asking");
+  dictation.about = { idea: name, why: "extend" };
+  speculate(name);
   koalaSays(`${READ_BACK(name)} אפשר גם לספר לי מה יקרה בו.`).then(() => {
     if (dictation.text !== name || koalaStage.dataset.state !== "asking") return;
     dictation.confirm = true;
@@ -1030,15 +1125,22 @@ yesBtn.addEventListener("click", () => {
   stopKoalaVoice();
   const topic = dictation.text;
   dictation.text = "";
-  dictation.seed = "";
+  dictation.about = null;
   dictation.confirm = false;
   closeMicrophone();
-  if (topic) createStory(topic);
+  if (!topic) return;
+  // אם הסיפור כבר נכתב ברקע על אותו רעיון, רק מציגים אותו
+  if (job?.speculative && !job.committed && job.topic === topic) job.commit();
+  else createStory(topic);
 });
 
 noBtn.addEventListener("click", async () => {
   stopKoalaVoice();
+  cancelSpeculation();
+  // הרעיון הקודם נשמר, כדי שהילדה תוכל לתקן רק את מה שלא הבנתי
+  if (dictation.text) dictation.about = { idea: dictation.text, why: "correct" };
   dictation.text = "";
+  dictation.reaction = "";
   dictation.confirm = false;
   setKoala("shaking");
   await Promise.all([koalaSays(ASK_AGAIN), new Promise((resolve) => setTimeout(resolve, SHAKE_MS))]);
