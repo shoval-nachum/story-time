@@ -185,6 +185,8 @@ async function createStory(topic) {
       part.pages.forEach((page, k) => {
         book[from + k + 1] = bookPage(page.lines, from + k);
       });
+      // מקריאים מראש כל עמוד ברגע שהוא מוכן, כדי שההקראה תתחיל מיד כשפותחים אותו
+      narration.prepare(book.slice(from + 1, to + 1));
       if (from === 0) {
         pages = book;
         setWaiting(false);
@@ -706,6 +708,10 @@ const stillMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 const koalaStage = document.getElementById("koala-stage");
 const homeScroll = document.getElementById("home-scroll");
+/* הכדור בזמן כתיבה רחב מהמסך. אם הדף נגלל הצידה (iOS עושה את זה לפעמים), מחזירים אותו מיד */
+homeScroll.addEventListener("scroll", () => {
+  if (homeScroll.scrollLeft !== 0) homeScroll.scrollLeft = 0;
+}, { passive: true });
 const koalaBtn = document.getElementById("koala-btn");
 const micLabel = document.getElementById("mic-label");
 const heard = document.getElementById("heard");
@@ -750,6 +756,11 @@ const dictation = {
   seed: "",
 };
 const koalaVoice = new Audio();
+/* עוצר את הקול של הדמות, גם אם הוא מגיע בזרם */
+function stopKoalaVoice() {
+  koalaVoice.pause();
+  window.speechPlayer.stop();
+}
 
 const canRecord = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && window.STORY_API_URL);
 typeUi.hidden = canRecord;
@@ -867,13 +878,14 @@ function watchSilence(onEnd) {
 async function startListening() {
   if (dictation.recorder || dictation.starting || dictation.busy) return;
   dictation.starting = true;
-  koalaVoice.pause();
+  stopKoalaVoice();
   /* נגינה קצרה בזמן הנגיעה מאשרת לדפדפן להשמיע אחר כך את הקול של הקואלה */
   if (!dictation.unlocked) {
     dictation.unlocked = true;
     koalaVoice.src = SILENCE;
     koalaVoice.play().catch(() => {});
   }
+  window.speechPlayer.unlock();
   const ready = await openMicrophone();
   dictation.starting = false;
   if (!ready) {
@@ -917,7 +929,7 @@ function cancelDictation() {
     dictation.cancelled = true;
     stopListening();
   }
-  koalaVoice.pause();
+  stopKoalaVoice();
   closeMicrophone();
   dictation.text = "";
   if (!home.classList.contains("waiting")) setKoala("idle");
@@ -986,12 +998,7 @@ async function finishListening(type, reason) {
 /* הקואלה מדברת, ומחכים עד שסיימה. אם הקול לא נטען, ממשיכים בלי לחכות */
 async function koalaSays(text) {
   try {
-    const url = await window.fetchSpeech(text, window.narrationSettings());
-    koalaVoice.src = url;
-    await new Promise((resolve) => {
-      koalaVoice.onended = koalaVoice.onerror = resolve;
-      koalaVoice.play().catch(resolve);
-    });
+    await window.speechPlayer.say(text, window.narrationSettings());
   } catch (error) {
     console.error("koala voice", error);
   }
@@ -1002,7 +1009,8 @@ async function koalaSays(text) {
 function startIdea(name) {
   if (home.classList.contains("waiting") || dictation.busy || dictation.recorder) return;
   closeMore();
-  koalaVoice.pause();
+  stopKoalaVoice();
+  window.speechPlayer.unlock();
   dictation.seed = name;
   dictation.text = name;
   dictation.confirm = false;
@@ -1016,7 +1024,7 @@ function startIdea(name) {
 }
 
 yesBtn.addEventListener("click", () => {
-  koalaVoice.pause();
+  stopKoalaVoice();
   const topic = dictation.text;
   dictation.text = "";
   dictation.seed = "";
@@ -1026,7 +1034,7 @@ yesBtn.addEventListener("click", () => {
 });
 
 noBtn.addEventListener("click", async () => {
-  koalaVoice.pause();
+  stopKoalaVoice();
   dictation.text = "";
   dictation.confirm = false;
   setKoala("shaking");
@@ -1524,6 +1532,12 @@ const narration = {
     return this.clips.get(key);
   },
 
+  /* מכין מראש הקראה לעמודים, ברקע. כל משפט נוצר פעם אחת ונשמר בשרת */
+  prepare(list) {
+    const settings = window.narrationSettings();
+    list.forEach((page) => this.sentences(page).forEach((text) => this.clip(text, settings).catch(() => {})));
+  },
+
   /* מכין מראש את הכפולה הבאה, כדי שלא תהיה הפסקה אחרי הדפדוף */
   prefetchNext(settings) {
     const step = view.spread ? 2 : 1;
@@ -1566,6 +1580,7 @@ const narration = {
     const pagesToRead = visible.map((page) => this.sentences(page)).filter((list) => list.length);
     pagesToRead.flat().forEach((text) => this.clip(text, settings).catch(() => {}));
     this.prefetchNext(settings);
+    this.prepare(pages);
     narrateBtn.classList.add("speaking");
     try {
       for (const [p, sentences] of pagesToRead.entries()) {

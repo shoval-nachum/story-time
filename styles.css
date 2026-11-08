@@ -174,8 +174,11 @@ html.reading body::after { display: none; }
   transform: translateX(-50%);
 }
 
+/* במסך הבית השורה מעוגנת מלמטה, כך שהודעה ארוכה שנשברת לשתי שורות גדלה למעלה ולא מכסה את השם.
+   בכתיבה היא כותרת מעוגנת מלמעלה, ושורות נוספות יורדות למטה */
 .mic-label {
-  top: calc(var(--ly) * 1cqw);
+  top: calc((var(--ly) + var(--lf) * 1.1) * 1cqw);
+  transform: translate(-50%, -100%);
   width: var(--lw);
   font-size: calc(var(--lf) * 1cqw);
   font-weight: 700;
@@ -185,8 +188,9 @@ html.reading body::after { display: none; }
   transition: opacity 300ms, transform 300ms, top 700ms, left 700ms, font-size 700ms;
 }
 
-.mic-label.out { opacity: 0; transform: translate(-50%, -2cqw); }
-.home.focus .mic-label { font-weight: 900; }
+.mic-label.out { opacity: 0; transform: translate(-50%, calc(-100% - 2cqw)); }
+.home.focus .mic-label { top: calc(var(--ly) * 1cqw); transform: translate(-50%, 0); font-weight: 900; }
+.home.focus .mic-label.out { transform: translate(-50%, -2cqw); }
 .home.focus .mic-label:not(.out) { opacity: 1; }
 
 .child-name {
@@ -201,8 +205,9 @@ html.reading body::after { display: none; }
 
 .home.focus .child-name { opacity: 0; transform: translateX(-50%) scale(0.85); }
 
-/* הדמות. בזמן כתיבה הכדור רחב מהמסך, ובלי חיתוך בצדדים הדף נגלל הצידה ו"קופץ" כשהכדור קטן בחזרה */
-.buddy { position: absolute; z-index: 2; inset: 0; pointer-events: none; overflow-x: clip; overflow-y: visible; }
+/* הדמות. בזמן כתיבה הכדור רחב מהמסך. לא חותכים אותו כאן: בספארי ובאייפד חיתוך בצדדים חותך גם למטה,
+   ובאייפד לאורך העמודה הצרה. שהדף לא ייגלל הצידה, app.js מחזיר את הגלילה הצידית לאפס */
+.buddy { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
 
 .bd-ball,
 .bd-shadow,
